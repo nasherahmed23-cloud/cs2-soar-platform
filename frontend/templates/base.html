@@ -5,90 +5,170 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>
-        {% block title %}Innovatech SOAR{% endblock %}
-    </title>
+    <title>{% block title %}Innovatech SOAR{% endblock %}</title>
 
+    <!-- Main Dashboard Stylesheet -->
     <link
         rel="stylesheet"
         href="{{ url_for('static', filename='css/dashboard.css') }}"
     >
+
+    {% block styles %}{% endblock %}
 </head>
 
 <body>
 
 <div class="app-layout">
 
-    <!-- SIDEBAR -->
+    <!-- ==========================================
+         SIDEBAR
+         ========================================== -->
+
     <aside class="sidebar">
 
+        <!-- APPLICATION BRANDING -->
+
         <div class="sidebar-brand">
-            <div class="brand-icon">♢</div>
+
+            <div class="brand-icon">
+                ♢
+            </div>
+
             <div class="brand-name">
                 Innovatech <span>SOAR</span>
             </div>
+
         </div>
+
+
+        <!-- SIDEBAR CONTENT -->
 
         <div class="sidebar-content">
 
+            <!-- OPERATIONS INFORMATION -->
+
             <div class="operations-status">
+
                 <span class="status-dot"></span>
 
                 <div>
-                    <strong>Operations online</strong>
+                    <strong>SOAR Management</strong>
                     <small>Innovatech Solutions</small>
                 </div>
+
             </div>
 
-            <p class="nav-section-title">SOAR MANAGEMENT</p>
+
+            <!-- NAVIGATION -->
+
+            <p class="nav-section-title">
+                SOAR MANAGEMENT
+            </p>
 
             <nav class="sidebar-nav">
+
+                <!-- DASHBOARD -->
 
                 <a
                     href="{{ url_for('admin_dashboard') }}"
                     class="nav-link {% if active_page == 'dashboard' %}active{% endif %}"
+                    {% if active_page == 'dashboard' %}
+                    aria-current="page"
+                    {% endif %}
                 >
                     <span class="nav-icon">▦</span>
                     Dashboard
                 </a>
 
+
+                <!-- SECURITY EVENTS -->
+
                 <a
                     href="{{ url_for('admin_events') }}"
                     class="nav-link {% if active_page == 'events' %}active{% endif %}"
+                    {% if active_page == 'events' %}
+                    aria-current="page"
+                    {% endif %}
                 >
                     <span class="nav-icon">▤</span>
                     Security Events
                 </a>
 
+
+                <!-- INCIDENTS -->
+
                 <a
                     href="{{ url_for('admin_incidents') }}"
                     class="nav-link {% if active_page == 'incidents' %}active{% endif %}"
+                    {% if active_page == 'incidents' %}
+                    aria-current="page"
+                    {% endif %}
                 >
                     <span class="nav-icon">⬡</span>
                     Incidents
                 </a>
 
-                <a href="#" class="nav-link disabled">
+
+                <!-- AUTOMATED RESPONSES - NOT YET IMPLEMENTED -->
+
+                <a
+                    href="#"
+                    class="nav-link disabled"
+                    aria-disabled="true"
+                    tabindex="-1"
+                >
                     <span class="nav-icon">ϟ</span>
                     Automated Responses
                 </a>
 
-                <a href="#" class="nav-link disabled">
+
+                <!-- MONITORING - NOT YET IMPLEMENTED -->
+
+                <a
+                    href="#"
+                    class="nav-link disabled"
+                    aria-disabled="true"
+                    tabindex="-1"
+                >
                     <span class="nav-icon">▥</span>
                     Monitoring
                 </a>
 
-                <a href="#" class="nav-link disabled">
+
+                <!-- PLAYBOOKS / RULES - NOT YET IMPLEMENTED -->
+
+                <a
+                    href="#"
+                    class="nav-link disabled"
+                    aria-disabled="true"
+                    tabindex="-1"
+                >
                     <span class="nav-icon">▣</span>
                     Playbooks / Rules
                 </a>
 
-                <a href="#" class="nav-link disabled">
+
+                <!-- USERS - NOT YET IMPLEMENTED -->
+
+                <a
+                    href="#"
+                    class="nav-link disabled"
+                    aria-disabled="true"
+                    tabindex="-1"
+                >
                     <span class="nav-icon">♧</span>
                     Users
                 </a>
 
-                <a href="#" class="nav-link disabled">
+
+                <!-- SETTINGS - NOT YET IMPLEMENTED -->
+
+                <a
+                    href="#"
+                    class="nav-link disabled"
+                    aria-disabled="true"
+                    tabindex="-1"
+                >
                     <span class="nav-icon">⚙</span>
                     Settings
                 </a>
@@ -97,62 +177,137 @@
 
         </div>
 
-        <!-- SIDEBAR FOOTER -->
+
+        <!-- ==========================================
+             SIDEBAR FOOTER
+             ========================================== -->
+
         <div class="sidebar-footer">
 
+            <!-- ACCESS LEVEL -->
+
             <div class="access-level">
-                <span>ACCESS LEVEL</span>
-                <strong>SOAR Administrator</strong>
+
+                <span>
+                    ACCESS LEVEL
+                </span>
+
+                <strong>
+                    SOAR Administrator
+                </strong>
+
             </div>
 
-            <form action="{{ url_for('logout') }}" method="POST">
+
+            <!-- LOGOUT -->
+
+            <form
+                action="{{ url_for('logout') }}"
+                method="POST"
+            >
+
                 <input
                     type="hidden"
                     name="csrf_token"
                     value="{{ csrf_token() }}"
                 >
 
-                <button type="submit" class="logout-button">
+                <button
+                    type="submit"
+                    class="logout-button"
+                >
                     ↪ &nbsp; Logout
                 </button>
+
             </form>
 
         </div>
 
     </aside>
 
-    <!-- MAIN AREA -->
+
+    <!-- ==========================================
+         MAIN APPLICATION AREA
+         ========================================== -->
+
     <div class="main-area">
 
         <!-- TOP HEADER -->
+
         <header class="top-header">
 
+            <!-- SYSTEM STATUS -->
+
             <div class="system-status">
+
                 <span class="status-dot"></span>
-                SOAR SYSTEM
-                <span class="status-placeholder">STATUS NOT CONNECTED</span>
+
+                <span>
+                    SOAR SYSTEM
+                </span>
+
+                <span class="status-placeholder">
+                    STATUS NOT CONNECTED
+                </span>
+
             </div>
+
+
+            <!-- HEADER ACTIONS -->
 
             <div class="header-actions">
 
-                <div class="notification-icon" title="Notifications">
-                    ♧
-                </div>
+                <!-- NOTIFICATIONS LINK -->
+
+                <a
+                    href="{{ url_for('admin_notifications') }}"
+                    class="notification-icon"
+                    title="Security Notifications"
+                    aria-label="View security notifications"
+                    {% if active_page == 'notifications' %}
+                    aria-current="page"
+                    {% endif %}
+                >
+                    &#128276;
+                </a>
+
+
+                <!-- ADMINISTRATOR INFORMATION -->
 
                 <div class="user-info">
-                    <div class="user-avatar">AU</div>
+
+                    <!-- AVATAR -->
+
+                    <div class="user-avatar">
+                        AU
+                    </div>
+
+
+                    <!-- USER DETAILS -->
 
                     <div>
-                        <strong>Admin User</strong>
-                        <small>SOAR Administrator</small>
+
+                        <strong>
+                            {{ user.email if user is defined else 'Administrator' }}
+                        </strong>
+
+                        <small>
+                            SOAR Administrator
+                        </small>
+
                     </div>
+
                 </div>
 
             </div>
 
         </header>
 
-        <!-- PAGE CONTENT -->
+
+        <!-- ==========================================
+             PAGE CONTENT
+             ========================================== -->
+
         <main class="page-content">
 
             {% block content %}{% endblock %}
@@ -163,7 +318,12 @@
 
 </div>
 
-    {% block scripts %}{% endblock %}
+
+<!-- ==========================================
+     PAGE-SPECIFIC JAVASCRIPT
+     ========================================== -->
+
+{% block scripts %}{% endblock %}
 
 </body>
 </html>

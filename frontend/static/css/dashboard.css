@@ -2028,3 +2028,121 @@ body {
 #securityEventsTable .event-row[hidden] {
     display: none;
 }
+#incidentsTable .incident-row[hidden] {
+    display: none;
+}
+
+#noMatchingIncidents[hidden] {
+    display: none;
+}
+/* ==========================================
+   HEADER NOTIFICATION ICON
+   ========================================== */
+
+.notification-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 38px;
+    height: 38px;
+
+    background-color: #1a293e;
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+
+    color: #94a3b8;
+    font-size: 20px;
+
+    text-decoration: none;
+    cursor: pointer;
+
+    transition: background-color 0.2s ease,
+                color 0.2s ease,
+                border-color 0.2s ease;
+}
+
+/* Hover */
+
+.notification-icon:hover {
+    background-color: rgba(59, 130, 246, 0.12);
+    color: var(--blue-light);
+    border-color: var(--blue-primary);
+}
+
+/* Keyboard focus */
+
+.notification-icon:focus-visible {
+    outline: 2px solid var(--blue-light);
+    outline-offset: 3px;
+}
+
+/* Active notifications page */
+
+.notification-icon[aria-current="page"] {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: var(--blue-light);
+    border-color: var(--blue-primary);
+}
+/* ==========================================
+   SECURITY NOTIFICATIONS
+   ========================================== */
+
+/* Hide rows excluded by filtering */
+
+#notificationsTable .notification-row[hidden] {
+    display: none;
+}
+
+/* Hide empty-filter message until needed */
+
+#noMatchingNotifications[hidden] {
+    display: none;
+}
+
+/* Prevent long notification titles from
+   breaking the table layout */
+
+#notificationsTable td {
+    vertical-align: middle;
+}
+
+/* Allow the table to scroll horizontally
+   on smaller screens */
+
+#notificationsTable {
+    min-width: 1050px;
+}
+
+/* Notification details message */
+
+#detailNotificationMessage {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.6;
+}
+/* ==========================================
+   SECURITY NOTIFICATIONS
+   ========================================== */
+
+#notificationsTable .notification-row[hidden] {
+    display: none;
+}
+
+#noMatchingNotifications[hidden] {
+    display: none;
+}
+
+#notificationsTable {
+    min-width: 1050px;
+}
+
+#notificationsTable td {
+    vertical-align: middle;
+}
+
+#detailNotificationMessage {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.6;
+}

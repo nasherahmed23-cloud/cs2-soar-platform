@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}
+Notifications | Innovatech SOAR
+{% endblock %}
+
+{% block content %}
+
+<!-- PAGE HEADER -->
+
+<div class="page-heading">
+
+    <div>
+        <p class="page-category">
+            SECURITY OPERATIONS / NOTIFICATIONS
+        </p>
+
+        <h1>Security Notifications</h1>
+
+        <p class="page-description">
+            Review security notifications generated
+            by automated SOAR responses.
+        </p>
+    </div>
+
+</div>
+
+
+<!-- API ERROR HANDLING -->
+
+{% if api_error %}
+
+<div class="dashboard-errors" role="alert">
+
+    <h3>Unable to retrieve notifications</h3>
+
+    <p>{{ api_error }}</p>
+
+</div>
+
+{% else %}
+
+<!-- TEMPORARY NOTIFICATION OVERVIEW -->
+
+<div class="dashboard-placeholder">
+
+    <h2>Security Notifications API Integration</h2>
+
+    <p>
+        Successfully retrieved {{ notifications | length }}
+        security notification records.
+    </p>
+
+    <p>
+        The complete notifications interface
+        will be implemented next.
+    </p>
+
+</div>
+
+{% endif %}
+
+{% endblock %}

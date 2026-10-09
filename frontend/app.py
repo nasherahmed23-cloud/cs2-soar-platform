@@ -413,6 +413,34 @@ def admin_incidents():
     )
 
 # ==========================================
+# ADMINISTRATOR - SECURITY NOTIFICATIONS
+# ==========================================
+
+@app.route("/admin/notifications")
+@login_required(role="admin")
+def admin_notifications():
+
+    token = session["token"]
+
+    notifications = []
+    api_error = None
+
+    # Retrieve notifications from AWS API Gateway
+    try:
+        notifications = get_notifications(token)
+
+    except APIClientError as error:
+        api_error = str(error)
+
+    return render_template(
+        "admin/notifications.html",
+        user=session["user"],
+        active_page="notifications",
+        notifications=notifications,
+        api_error=api_error
+    )
+
+# ==========================================
 # EMPLOYEE DASHBOARD
 # ==========================================
 
