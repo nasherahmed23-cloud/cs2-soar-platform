@@ -1,7 +1,102 @@
-.terraform/
+# ==========================================
+# Terraform
+# ==========================================
+
+# Terraform working directory
+**/.terraform/*
+
+# Terraform state files
 *.tfstate
 *.tfstate.*
+
+# Terraform crash logs
 crash.log
 crash.*.log
-terraform.tfstate
-terraform.tfstate.backup
+
+# Terraform variable files containing secrets
+*.tfvars
+*.tfvars.json
+
+# Terraform override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Terraform CLI configuration
+.terraformrc
+terraform.rc
+
+
+# ==========================================
+# AWS Lambda / Python
+# ==========================================
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Python virtual environments
+venv/
+.venv/
+env/
+
+# Python dependencies packaged for Lambda
+lambda/jwt/
+lambda/pyjwt-*.dist-info/
+lambda/pymysql/
+lambda/pymysql-*.dist-info/
+
+# Lambda deployment packages
+infra/*.zip
+lambda/*.zip
+
+# Python build files
+build/
+dist/
+*.egg-info/
+
+
+# ==========================================
+# Frontend
+# ==========================================
+
+# Node.js dependencies
+node_modules/
+frontend/node_modules/
+
+# Frontend build outputs
+frontend/dist/
+frontend/build/
+frontend/.next/
+
+# Frontend cache
+.cache/
+.next/
+
+
+# ==========================================
+# Environment Variables / Secrets
+# ==========================================
+
+.env
+.env.*
+!.env.example
+
+*.pem
+*.key
+*.p12
+
+
+# ==========================================
+# IDE / Operating System
+# ==========================================
+
+.DS_Store
+Thumbs.db
+
+.vscode/
+.idea/
+
+# Log files
+*.log
