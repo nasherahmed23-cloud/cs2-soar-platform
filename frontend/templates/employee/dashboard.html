@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Employee | Innovatech SOAR</title>
+</head>
+
+<body>
+
+    <h1>Innovatech SOAR</h1>
+
+    <h2>Employee Dashboard</h2>
+
+    <p>
+        Logged in as: {{ user.email }}
+    </p>
+
+    <p>
+        Role: {{ user.role }}
+    </p>
+
+    <p>Employee authentication successful.</p>
+
+    <form action="{{ url_for('logout') }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit">Logout</button>
+    </form>
+
+</body>
+</html>

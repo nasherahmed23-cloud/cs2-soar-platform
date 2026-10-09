@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>
+        {% block title %}Innovatech SOAR{% endblock %}
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/dashboard.css') }}"
+    >
+</head>
+
+<body>
+
+<div class="app-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+
+        <div class="sidebar-brand">
+            <div class="brand-icon">♢</div>
+            <div class="brand-name">
+                Innovatech <span>SOAR</span>
+            </div>
+        </div>
+
+        <div class="sidebar-content">
+
+            <div class="operations-status">
+                <span class="status-dot"></span>
+
+                <div>
+                    <strong>Operations online</strong>
+                    <small>Innovatech Solutions</small>
+                </div>
+            </div>
+
+            <p class="nav-section-title">SOAR MANAGEMENT</p>
+
+            <nav class="sidebar-nav">
+
+                <a
+                    href="{{ url_for('admin_dashboard') }}"
+                    class="nav-link {% if active_page == 'dashboard' %}active{% endif %}"
+                >
+                    <span class="nav-icon">▦</span>
+                    Dashboard
+                </a>
+
+                <a
+                    href="{{ url_for('admin_events') }}"
+                    class="nav-link {% if active_page == 'events' %}active{% endif %}"
+                >
+                    <span class="nav-icon">▤</span>
+                    Security Events
+                </a>
+
+                <a
+                    href="{{ url_for('admin_incidents') }}"
+                    class="nav-link {% if active_page == 'incidents' %}active{% endif %}"
+                >
+                    <span class="nav-icon">⬡</span>
+                    Incidents
+                </a>
+
+                <a href="#" class="nav-link disabled">
+                    <span class="nav-icon">ϟ</span>
+                    Automated Responses
+                </a>
+
+                <a href="#" class="nav-link disabled">
+                    <span class="nav-icon">▥</span>
+                    Monitoring
+                </a>
+
+                <a href="#" class="nav-link disabled">
+                    <span class="nav-icon">▣</span>
+                    Playbooks / Rules
+                </a>
+
+                <a href="#" class="nav-link disabled">
+                    <span class="nav-icon">♧</span>
+                    Users
+                </a>
+
+                <a href="#" class="nav-link disabled">
+                    <span class="nav-icon">⚙</span>
+                    Settings
+                </a>
+
+            </nav>
+
+        </div>
+
+        <!-- SIDEBAR FOOTER -->
+        <div class="sidebar-footer">
+
+            <div class="access-level">
+                <span>ACCESS LEVEL</span>
+                <strong>SOAR Administrator</strong>
+            </div>
+
+            <form action="{{ url_for('logout') }}" method="POST">
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token() }}"
+                >
+
+                <button type="submit" class="logout-button">
+                    ↪ &nbsp; Logout
+                </button>
+            </form>
+
+        </div>
+
+    </aside>
+
+    <!-- MAIN AREA -->
+    <div class="main-area">
+
+        <!-- TOP HEADER -->
+        <header class="top-header">
+
+            <div class="system-status">
+                <span class="status-dot"></span>
+                SOAR SYSTEM
+                <span class="status-placeholder">STATUS NOT CONNECTED</span>
+            </div>
+
+            <div class="header-actions">
+
+                <div class="notification-icon" title="Notifications">
+                    ♧
+                </div>
+
+                <div class="user-info">
+                    <div class="user-avatar">AU</div>
+
+                    <div>
+                        <strong>Admin User</strong>
+                        <small>SOAR Administrator</small>
+                    </div>
+                </div>
+
+            </div>
+
+        </header>
+
+        <!-- PAGE CONTENT -->
+        <main class="page-content">
+
+            {% block content %}{% endblock %}
+
+        </main>
+
+    </div>
+
+</div>
+
+    {% block scripts %}{% endblock %}
+
+</body>
+</html>

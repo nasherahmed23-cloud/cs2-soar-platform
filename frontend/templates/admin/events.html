@@ -1,0 +1,668 @@
+{% extends "base.html" %}
+
+{% block title %}
+Security Events | Innovatech SOAR
+{% endblock %}
+
+
+{% block content %}
+
+<!-- ==========================================
+     PAGE HEADER
+     ========================================== -->
+
+<div class="page-heading">
+
+    <div>
+        <p class="page-category">
+            SECURITY OPERATIONS / EVENT MANAGEMENT
+        </p>
+
+        <h1>Security Events</h1>
+
+        <p class="page-description">
+            Monitor and investigate security events collected
+            by the Innovatech SOAR platform.
+        </p>
+    </div>
+
+    <div class="dashboard-header-actions">
+        <span class="data-scope">
+            Latest 100 events
+        </span>
+    </div>
+
+</div>
+
+
+<!-- ==========================================
+     API ERROR HANDLING
+     ========================================== -->
+
+{% if api_error %}
+
+<div class="dashboard-errors" role="alert">
+
+    <h3>Unable to retrieve security events</h3>
+
+    <p>{{ api_error }}</p>
+
+</div>
+
+{% endif %}
+
+
+<!-- ==========================================
+     EVENT SUMMARY
+     ========================================== -->
+
+{% if not api_error %}
+
+{% set high_events = events
+    | selectattr('severity', 'defined')
+    | selectattr('severity', 'equalto', 'high')
+    | list | length %}
+
+{% set critical_events = events
+    | selectattr('severity', 'defined')
+    | selectattr('severity', 'equalto', 'critical')
+    | list | length %}
+
+<div class="event-summary">
+
+    <!-- RETRIEVED EVENTS -->
+
+    <div class="event-summary-card">
+
+        <span class="event-summary-label">
+            Retrieved Events
+        </span>
+
+        <strong>
+            {{ events | length }}
+        </strong>
+
+        <small>
+            Latest records from SOAR API
+        </small>
+
+    </div>
+
+
+    <!-- HIGH SEVERITY EVENTS -->
+
+    <div class="event-summary-card">
+
+        <span class="event-summary-label">
+            High-Severity Events
+        </span>
+
+        <strong>
+            {{ high_events }}
+        </strong>
+
+        <small>
+            Events classified as high
+        </small>
+
+    </div>
+
+
+    <!-- CRITICAL EVENTS -->
+
+    <div class="event-summary-card">
+
+        <span class="event-summary-label">
+            Critical Events
+        </span>
+
+        <strong>
+            {{ critical_events }}
+        </strong>
+
+        <small>
+            Events classified as critical
+        </small>
+
+    </div>
+
+</div>
+
+{% endif %}
+
+
+<!-- ==========================================
+     SECURITY EVENTS TABLE
+     ========================================== -->
+
+<section class="dashboard-section">
+
+    <div class="section-heading">
+
+        <div>
+            <h2>Event Records</h2>
+
+            <p>
+                Search, filter, and inspect retrieved security events.
+            </p>
+        </div>
+
+        <span class="section-label">
+            EVENT LOG
+        </span>
+
+    </div>
+
+
+    <!-- ======================================
+         SEARCH AND FILTER CONTROLS
+         ====================================== -->
+
+    <div class="event-filters">
+
+        <!-- SEARCH -->
+
+        <div class="event-search">
+
+            <label for="eventSearch">
+                Search Events
+            </label>
+
+            <input
+                type="search"
+                id="eventSearch"
+                placeholder="Search by event ID, type, source, or IP..."
+                {% if api_error %}disabled{% endif %}
+            >
+
+        </div>
+
+
+        <!-- SEVERITY FILTER -->
+
+        <div class="event-filter-group">
+
+            <label for="severityFilter">
+                Severity
+            </label>
+
+            <select
+                id="severityFilter"
+                {% if api_error %}disabled{% endif %}
+            >
+
+                <option value="all">
+                    All Severities
+                </option>
+
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+                <option value="info">Info</option>
+
+            </select>
+
+        </div>
+
+
+        <!-- STATUS FILTER -->
+
+        <div class="event-filter-group">
+
+            <label for="statusFilter">
+                Status
+            </label>
+
+            <select
+                id="statusFilter"
+                {% if api_error %}disabled{% endif %}
+            >
+
+                <option value="all">
+                    All Statuses
+                </option>
+
+                {% if not api_error %}
+
+                    {% set statuses = events
+                        | map(attribute='status')
+                        | unique
+                        | list %}
+
+                    {% for status in statuses %}
+
+                    <option value="{{ status | lower }}">
+                        {{ status | title }}
+                    </option>
+
+                    {% endfor %}
+
+                {% endif %}
+
+            </select>
+
+        </div>
+
+
+        <!-- RESET FILTERS -->
+
+        <div class="event-filter-actions">
+
+            <button
+                type="button"
+                id="resetFilters"
+                class="btn-secondary"
+                {% if api_error %}disabled{% endif %}
+            >
+                Reset Filters
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- ======================================
+         EVENT RESULTS COUNT
+         ====================================== -->
+
+    <div class="event-results-bar">
+
+        <span id="eventResultsCount">
+
+            {% if api_error %}
+
+                Events unavailable
+
+            {% else %}
+
+                Showing {{ events | length }} of
+                {{ events | length }} retrieved events
+
+            {% endif %}
+
+        </span>
+
+        <span class="event-results-note">
+            Client-side filtering
+        </span>
+
+    </div>
+
+
+    <!-- ======================================
+         SECURITY EVENTS TABLE
+         ====================================== -->
+
+    <div class="dashboard-table-container">
+
+        <table
+            class="dashboard-table"
+            id="securityEventsTable"
+        >
+
+            <thead>
+
+                <tr>
+                    <th>Event ID</th>
+                    <th>Event Type</th>
+                    <th>Source</th>
+                    <th>Source IP</th>
+                    <th>Severity</th>
+                    <th>Status</th>
+                    <th>Timestamp</th>
+                    <th>Action</th>
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+                {% if api_error %}
+
+                <!-- API ERROR -->
+
+                <tr>
+
+                    <td colspan="8" class="empty-state">
+                        Security events could not be retrieved.
+                    </td>
+
+                </tr>
+
+                {% else %}
+
+                    {% for event in events %}
+
+                    <!-- SECURITY EVENT RECORD -->
+
+                    <tr
+                        class="event-row"
+                        data-event-id="{{ event.event_id }}"
+                        data-event-type="{{ event.event_type | lower }}"
+                        data-source="{{ event.source | lower }}"
+                        data-source-ip="{{ event.source_ip | lower }}"
+                        data-severity="{{ event.severity | lower }}"
+                        data-status="{{ event.status | lower }}"
+                        data-message="{{ event.message }}"
+                        data-timestamp="{{ event.event_timestamp }}"
+                    >
+
+                        <!-- EVENT ID -->
+
+                        <td class="record-id">
+                            #{{ event.event_id }}
+                        </td>
+
+
+                        <!-- EVENT TYPE -->
+
+                        <td>
+                            {{ event.event_type }}
+                        </td>
+
+
+                        <!-- SOURCE -->
+
+                        <td>
+                            {{ event.source }}
+                        </td>
+
+
+                        <!-- SOURCE IP -->
+
+                        <td class="monospace">
+                            {{ event.source_ip }}
+                        </td>
+
+
+                        <!-- SEVERITY -->
+
+                        <td>
+
+                            {% set severity = event.severity | lower %}
+
+                            <span class="badge badge-{{ severity }}">
+                                {{ event.severity | upper }}
+                            </span>
+
+                        </td>
+
+
+                        <!-- STATUS -->
+
+                        <td>
+                            {{ event.status }}
+                        </td>
+
+
+                        <!-- TIMESTAMP -->
+
+                        <td class="timestamp">
+                            {{ event.event_timestamp }}
+                        </td>
+
+
+                        <!-- EVENT DETAILS BUTTON -->
+
+                        <td>
+
+                            <button
+                                type="button"
+                                class="event-details-button"
+                                aria-label="View details for event {{ event.event_id }}"
+                            >
+                                View
+                            </button>
+
+                        </td>
+
+                    </tr>
+
+                    {% else %}
+
+                    <!-- NO EVENTS -->
+
+                    <tr>
+
+                        <td colspan="8" class="empty-state">
+                            No security events available.
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                {% endif %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+
+    <!-- ======================================
+         NO FILTER MATCHES
+         ====================================== -->
+
+    <div
+        id="noMatchingEvents"
+        class="empty-state"
+        hidden
+    >
+        No security events match the selected filters.
+    </div>
+
+</section>
+
+
+<!-- ==========================================
+     EVENT DETAILS DIALOG
+     ========================================== -->
+
+<dialog
+    id="eventDetailsDialog"
+    class="event-details-dialog"
+    aria-labelledby="eventDetailsTitle"
+>
+
+    <!-- DIALOG HEADER -->
+
+    <div class="event-dialog-header">
+
+        <div>
+
+            <p class="page-category">
+                SECURITY EVENT / DETAILS
+            </p>
+
+            <h2 id="eventDetailsTitle">
+                Event Details
+            </h2>
+
+        </div>
+
+        <button
+            type="button"
+            id="closeEventDetails"
+            class="event-dialog-close"
+            aria-label="Close event details"
+        >
+            &times;
+        </button>
+
+    </div>
+
+
+    <!-- ======================================
+         EVENT DETAILS CONTENT
+         ====================================== -->
+
+    <div class="event-details-content">
+
+        <!-- EVENT ID -->
+
+        <div class="event-detail-item">
+
+            <span>Event ID</span>
+
+            <strong id="detailEventId">
+                —
+            </strong>
+
+        </div>
+
+
+        <!-- EVENT TYPE -->
+
+        <div class="event-detail-item">
+
+            <span>Event Type</span>
+
+            <strong id="detailEventType">
+                —
+            </strong>
+
+        </div>
+
+
+        <!-- SOURCE -->
+
+        <div class="event-detail-item">
+
+            <span>Source</span>
+
+            <strong id="detailSource">
+                —
+            </strong>
+
+        </div>
+
+
+        <!-- SOURCE IP -->
+
+        <div class="event-detail-item">
+
+            <span>Source IP</span>
+
+            <strong id="detailSourceIp">
+                —
+            </strong>
+
+        </div>
+
+
+        <!-- SEVERITY -->
+
+        <div class="event-detail-item">
+
+            <span>Severity</span>
+
+            <strong id="detailSeverity">
+                —
+            </strong>
+
+        </div>
+
+
+        <!-- STATUS -->
+
+        <div class="event-detail-item">
+
+            <span>Status</span>
+
+            <strong id="detailStatus">
+                —
+            </strong>
+
+        </div>
+
+
+        <!-- TIMESTAMP -->
+
+        <div class="event-detail-item">
+
+            <span>Timestamp</span>
+
+            <strong id="detailTimestamp">
+                —
+            </strong>
+
+        </div>
+
+
+        <!-- EVENT MESSAGE -->
+
+        <div class="event-detail-item event-detail-message">
+
+            <span>Event Message</span>
+
+            <p id="detailMessage">
+                —
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <!-- ======================================
+         DIALOG FOOTER
+         ====================================== -->
+
+    <div class="event-dialog-footer">
+
+        <button
+            type="button"
+            id="closeEventDetailsFooter"
+            class="btn-secondary"
+        >
+            Close
+        </button>
+
+    </div>
+
+</dialog>
+
+
+<!-- ==========================================
+     DATA SCOPE NOTICE
+     ========================================== -->
+
+<div class="dashboard-data-notice">
+
+    <strong>
+        Data Scope
+    </strong>
+
+    <p>
+        This page displays up to 100 recent security events
+        retrieved from the Innovatech SOAR API.
+
+        Searching and filtering operate only on these
+        retrieved records.
+
+        Historical records beyond the API limit
+        are not included.
+    </p>
+
+</div>
+
+{% endblock %}
+
+
+<!-- ==========================================
+     PAGE JAVASCRIPT
+     ========================================== -->
+
+{% block scripts %}
+
+<script
+    src="{{ url_for('static', filename='js/events.js') }}"
+    defer
+></script>
+
+{% endblock %}

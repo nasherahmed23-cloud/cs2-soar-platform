@@ -1,0 +1,464 @@
+{% extends "base.html" %}
+
+{% block title %}
+Dashboard | Innovatech SOAR
+{% endblock %}
+
+{% block content %}
+
+<!-- ==========================================
+     DASHBOARD HEADER
+     ========================================== -->
+
+<div class="page-heading">
+
+    <div>
+        <p class="page-category">
+            COMMAND CENTER / OVERVIEW
+        </p>
+
+        <h1>Security Operations Dashboard</h1>
+
+        <p class="page-description">
+            Monitor security events, incidents, and
+            notifications across the Innovatech environment.
+        </p>
+    </div>
+
+    <div class="dashboard-header-actions">
+        <span class="data-scope">
+            Latest 100 records per endpoint
+        </span>
+    </div>
+
+</div>
+
+
+<!-- ==========================================
+     API ERROR MESSAGES
+     ========================================== -->
+
+{% if api_errors %}
+
+<div class="dashboard-errors" role="alert">
+
+    <h3>Some security data could not be retrieved</h3>
+
+    {% for error in api_errors %}
+        <p>{{ error }}</p>
+    {% endfor %}
+
+</div>
+
+{% endif %}
+
+
+<!-- ==========================================
+     API DATA AVAILABILITY
+     ========================================== -->
+
+{% set error_messages = api_errors | join(' ') %}
+
+{% set events_failed = 'Events:' in error_messages %}
+{% set incidents_failed = 'Incidents:' in error_messages %}
+{% set notifications_failed = 'Notifications:' in error_messages %}
+
+
+<!-- ==========================================
+     STATISTICS CARDS
+     ========================================== -->
+
+<section class="stats-grid">
+
+    <!-- TOTAL SECURITY EVENTS -->
+
+    <div class="stat-card">
+
+        <div class="stat-card-header">
+            <span>Total Security Events</span>
+            <span class="stat-icon">▤</span>
+        </div>
+
+        <div class="stat-value">
+            {{ 'N/A' if events_failed else stats.total_events }}
+        </div>
+
+        <p class="stat-description">
+            Retrieved security events
+        </p>
+
+    </div>
+
+
+    <!-- HIGH SEVERITY EVENTS -->
+
+    <div class="stat-card">
+
+        <div class="stat-card-header">
+            <span>High-Severity Events</span>
+            <span class="stat-icon severity-icon">!</span>
+        </div>
+
+        <div class="stat-value">
+            {{ 'N/A' if events_failed else stats.high_severity_events }}
+        </div>
+
+        <p class="stat-description">
+            High and critical severity
+        </p>
+
+    </div>
+
+
+    <!-- TOTAL INCIDENTS -->
+
+    <div class="stat-card">
+
+        <div class="stat-card-header">
+            <span>Total Incidents</span>
+            <span class="stat-icon">⬡</span>
+        </div>
+
+        <div class="stat-value">
+            {{ 'N/A' if incidents_failed else stats.total_incidents }}
+        </div>
+
+        <p class="stat-description">
+            Automatically generated incidents
+        </p>
+
+    </div>
+
+
+    <!-- OPEN INCIDENTS -->
+
+    <div class="stat-card">
+
+        <div class="stat-card-header">
+            <span>Open Incidents</span>
+            <span class="stat-icon severity-icon">!</span>
+        </div>
+
+        <div class="stat-value">
+            {{ 'N/A' if incidents_failed else stats.open_incidents }}
+        </div>
+
+        <p class="stat-description">
+            Incidents requiring attention
+        </p>
+
+    </div>
+
+
+    <!-- NOTIFICATIONS -->
+
+    <div class="stat-card">
+
+        <div class="stat-card-header">
+            <span>Notifications</span>
+            <span class="stat-icon">◉</span>
+        </div>
+
+        <div class="stat-value">
+            {{ 'N/A' if notifications_failed else stats.total_notifications }}
+        </div>
+
+        <p class="stat-description">
+            Generated security notifications
+        </p>
+
+    </div>
+
+</section>
+
+
+<!-- ==========================================
+     RECENT SECURITY EVENTS
+     ========================================== -->
+
+<section class="dashboard-section">
+
+    <div class="section-heading">
+
+        <div>
+            <h2>Recent Security Events</h2>
+
+            <p>
+                Latest security events received by
+                the SOAR platform.
+            </p>
+        </div>
+
+        <span class="section-label">
+            RECENT ACTIVITY
+        </span>
+
+    </div>
+
+    <div class="dashboard-table-container">
+
+        <table class="dashboard-table">
+
+            <thead>
+                <tr>
+                    <th>Event ID</th>
+                    <th>Event Type</th>
+                    <th>Source</th>
+                    <th>Source IP</th>
+                    <th>Severity</th>
+                    <th>Status</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% if events_failed %}
+
+                <tr>
+                    <td colspan="7" class="empty-state">
+                        Security events could not be retrieved.
+                    </td>
+                </tr>
+
+                {% else %}
+
+                    {% for event in events %}
+
+                    <tr>
+
+                        <td class="record-id">
+                            #{{ event.event_id }}
+                        </td>
+
+                        <td>
+                            {{ event.event_type }}
+                        </td>
+
+                        <td>
+                            {{ event.source }}
+                        </td>
+
+                        <td class="monospace">
+                            {{ event.source_ip }}
+                        </td>
+
+                        <td>
+
+                            {% set severity = event.severity | lower %}
+
+                            <span class="badge badge-{{ severity }}">
+                                {{ event.severity | upper }}
+                            </span>
+
+                        </td>
+
+                        <td>
+                            {{ event.status }}
+                        </td>
+
+                        <td class="timestamp">
+                            {{ event.event_timestamp }}
+                        </td>
+
+                    </tr>
+
+                    {% else %}
+
+                    <tr>
+                        <td colspan="7" class="empty-state">
+                            No security events available.
+                        </td>
+                    </tr>
+
+                    {% endfor %}
+
+                {% endif %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<!-- ==========================================
+     INCIDENTS AND NOTIFICATIONS
+     ========================================== -->
+
+<div class="dashboard-two-column">
+
+    <!-- RECENT INCIDENTS -->
+
+    <section class="dashboard-section">
+
+        <div class="section-heading">
+
+            <div>
+                <h2>Recent Incidents</h2>
+
+                <p>
+                    Incidents generated by SOAR rules.
+                </p>
+            </div>
+
+        </div>
+
+        <div class="dashboard-list">
+
+            {% if incidents_failed %}
+
+            <div class="empty-state">
+                Security incidents could not be retrieved.
+            </div>
+
+            {% else %}
+
+                {% for incident in incidents %}
+
+                <div class="dashboard-list-item">
+
+                    <div class="list-item-header">
+
+                        <strong>
+                            Incident #{{ incident.incident_id }}
+                        </strong>
+
+                        <span class="badge badge-{{ incident.severity | lower }}">
+                            {{ incident.severity | upper }}
+                        </span>
+
+                    </div>
+
+                    <p>
+                        Rule: {{ incident.rule_name }}
+                    </p>
+
+                    <div class="list-item-footer">
+
+                        <span>
+                            Status: {{ incident.status }}
+                        </span>
+
+                        <span>
+                            {{ incident.created_at }}
+                        </span>
+
+                    </div>
+
+                </div>
+
+                {% else %}
+
+                <div class="empty-state">
+                    No incidents available.
+                </div>
+
+                {% endfor %}
+
+            {% endif %}
+
+        </div>
+
+    </section>
+
+
+    <!-- RECENT NOTIFICATIONS -->
+
+    <section class="dashboard-section">
+
+        <div class="section-heading">
+
+            <div>
+                <h2>Recent Notifications</h2>
+
+                <p>
+                    Notifications generated by
+                    automated SOAR responses.
+                </p>
+            </div>
+
+        </div>
+
+        <div class="dashboard-list">
+
+            {% if notifications_failed %}
+
+            <div class="empty-state">
+                Security notifications could not be retrieved.
+            </div>
+
+            {% else %}
+
+                {% for notification in notifications %}
+
+                <div class="dashboard-list-item">
+
+                    <div class="list-item-header">
+
+                        <strong>
+                            {{ notification.title }}
+                        </strong>
+
+                        <span class="badge badge-{{ notification.severity | lower }}">
+                            {{ notification.severity | upper }}
+                        </span>
+
+                    </div>
+
+                    <p>
+                        {{ notification.message }}
+                    </p>
+
+                    <div class="list-item-footer">
+
+                        <span>
+                            #{{ notification.notification_id }}
+                        </span>
+
+                        <span>
+                            {{ notification.created_at }}
+                        </span>
+
+                    </div>
+
+                </div>
+
+                {% else %}
+
+                <div class="empty-state">
+                    No notifications available.
+                </div>
+
+                {% endfor %}
+
+            {% endif %}
+
+        </div>
+
+    </section>
+
+</div>
+
+
+<!-- ==========================================
+     DATA SCOPE NOTICE
+     ========================================== -->
+
+<div class="dashboard-data-notice">
+
+    <strong>Data Scope</strong>
+
+    <p>
+        Dashboard statistics are calculated from the latest
+        records returned by the SOAR API. Each endpoint
+        currently returns a maximum of 100 records.
+        These figures do not necessarily represent
+        historical totals across the entire environment.
+    </p>
+
+</div>
+
+{% endblock %}
