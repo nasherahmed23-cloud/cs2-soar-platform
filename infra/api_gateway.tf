@@ -60,3 +60,10 @@ resource "aws_apigatewayv2_route" "get_notifications" {
   route_key = "GET /notifications"
   target    = "integrations/${aws_apigatewayv2_integration.event_collector.id}"
 }
+
+resource "aws_apigatewayv2_route" "login" {
+  api_id = aws_apigatewayv2_api.soar_api.id
+
+  route_key = "POST /login"
+  target    = "integrations/${aws_apigatewayv2_integration.event_collector.id}"
+}

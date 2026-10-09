@@ -50,7 +50,10 @@ resource "aws_iam_role_policy" "lambda_ssm_access" {
           "ssm:GetParameters"
         ]
 
-        Resource = "arn:aws:ssm:eu-central-1:*:parameter/innovatech/soar/db/*"
+        Resource = [
+          "arn:aws:ssm:eu-central-1:*:parameter/innovatech/soar/db/*",
+          "arn:aws:ssm:eu-central-1:*:parameter/innovatech/soar/auth/jwt_secret"
+        ]
       }
     ]
   })
