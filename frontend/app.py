@@ -1,15 +1,11 @@
-# ==========================================
 # INNOVATECH SOAR - FLASK FRONTEND
-# ==========================================
 
+# Dependicnes 
 import os
 import time
-
 from datetime import timedelta
 from functools import wraps
-
 from dotenv import load_dotenv
-
 from flask import (
     Flask,
     render_template,
@@ -18,15 +14,12 @@ from flask import (
     url_for,
     session
 )
-
 from flask_session import Session
 from flask_wtf.csrf import CSRFProtect
 from cachelib import FileSystemCache
 
 
-# ==========================================
 # ENVIRONMENT CONFIGURATION
-# ==========================================
 
 load_dotenv()
 
@@ -49,9 +42,8 @@ if not secret_key:
 app.config["SECRET_KEY"] = secret_key
 
 
-# ==========================================
+
 # SESSION CONFIGURATION
-# ==========================================
 
 app.config.update(
     SESSION_TYPE="cachelib",
@@ -82,9 +74,8 @@ Session(app)
 csrf = CSRFProtect(app)
 
 
-# ==========================================
+
 # AUTHENTICATION DECORATOR
-# ==========================================
 
 def login_required(role=None):
 
@@ -125,9 +116,8 @@ def login_required(role=None):
     return decorator
 
 
-# ==========================================
+
 # LOGIN PAGE
-# ==========================================
 
 @app.route("/", methods=["GET"])
 @app.route("/login", methods=["GET", "POST"])
@@ -165,7 +155,6 @@ def login():
         email = request.form.get("email", "").strip()
         password = request.form.get("password", "")
 
-        # Validate login fields
         if not email or not password:
 
             error = "Email and password are required."
@@ -174,7 +163,6 @@ def login():
 
             try:
 
-                # Authenticate through AWS API Gateway
                 result = login_user(
                     email,
                     password
@@ -185,32 +173,26 @@ def login():
 
                 role = user.get("role")
 
-                # Validate returned role
+                
                 if role not in ("admin", "employee"):
 
                     raise APIClientError(
                         "Unauthorized user role."
                     )
 
-                # Clear previous session
                 session.clear()
 
-                # Store authentication data
-                # in server-side session storage
                 session["user"] = user
                 session["token"] = token
 
-                # Lambda JWT validity: 3600 seconds
                 session["expires_at"] = time.time() + 3600
 
-                # Administrator redirection
                 if role == "admin":
 
                     return redirect(
                         url_for("admin_dashboard")
                     )
 
-                # Employee redirection
                 if role == "employee":
 
                     return redirect(
@@ -227,29 +209,23 @@ def login():
     )
 
 
-# ==========================================
 # ADMINISTRATOR DASHBOARD
-# ==========================================
-
 @app.route("/admin/dashboard")
 @login_required(role="admin")
 def admin_dashboard():
 
-    # JWT stored during authentication
+    
     token = session["token"]
 
-    # Initialize API datasets
     events = []
     incidents = []
     notifications = []
 
-    # Store API errors for display
     api_errors = []
 
-    # ======================================
+    
     # RETRIEVE SECURITY EVENTS
-    # ======================================
-
+    
     try:
 
         events = get_events(token)
@@ -259,10 +235,8 @@ def admin_dashboard():
         api_errors.append(
             f"Events: {error}"
         )
-
-    # ======================================
+    
     # RETRIEVE SECURITY INCIDENTS
-    # ======================================
 
     try:
 
@@ -274,9 +248,7 @@ def admin_dashboard():
             f"Incidents: {error}"
         )
 
-    # ======================================
     # RETRIEVE NOTIFICATIONS
-    # ======================================
 
     try:
 
@@ -288,14 +260,12 @@ def admin_dashboard():
             f"Notifications: {error}"
         )
 
-    # ======================================
+
     # CALCULATE DASHBOARD STATISTICS
-    # ======================================
 
     # Total retrieved security events
     total_events = len(events)
 
-    # Events classified as high or critical
     high_severity_events = sum(
         1
         for event in events
@@ -304,10 +274,8 @@ def admin_dashboard():
         ).lower() in ("high", "critical")
     )
 
-    # Total retrieved incidents
     total_incidents = len(incidents)
 
-    # Incidents with open status
     open_incidents = sum(
         1
         for incident in incidents
@@ -316,13 +284,10 @@ def admin_dashboard():
         ).lower() == "open"
     )
 
-    # Total retrieved notifications
     total_notifications = len(notifications)
 
-    # ======================================
-    # DASHBOARD STATISTICS
-    # ======================================
 
+    # DASHBOARD STATISTICS
     dashboard_stats = {
         "total_events": total_events,
         "high_severity_events": high_severity_events,
@@ -331,9 +296,8 @@ def admin_dashboard():
         "total_notifications": total_notifications
     }
 
-    # ======================================
+    
     # RENDER ADMINISTRATOR DASHBOARD
-    # ======================================
 
     return render_template(
         "admin/dashboard.html",
@@ -343,22 +307,19 @@ def admin_dashboard():
 
         stats=dashboard_stats,
 
-        # Recent security events
+        
         events=events[:10],
 
-        # Recent security incidents
         incidents=incidents[:10],
 
-        # Recent notifications
+
         notifications=notifications[:5],
 
-        # API error messages
         api_errors=api_errors
     )
 
-# ==========================================
+
 # ADMINISTRATOR - SECURITY EVENTS
-# ==========================================
 
 @app.route("/admin/events")
 @login_required(role="admin")
@@ -369,7 +330,6 @@ def admin_events():
     events = []
     api_error = None
 
-    # Retrieve security events from AWS API Gateway
     try:
         events = get_events(token)
 
@@ -384,9 +344,8 @@ def admin_events():
         api_error=api_error
     )
 
-# ==========================================
+
 # ADMINISTRATOR - SECURITY INCIDENTS
-# ==========================================
 
 @app.route("/admin/incidents")
 @login_required(role="admin")
@@ -397,7 +356,6 @@ def admin_incidents():
     incidents = []
     api_error = None
 
-    # Retrieve incidents from AWS API Gateway
     try:
         incidents = get_incidents(token)
 
@@ -412,9 +370,8 @@ def admin_incidents():
         api_error=api_error
     )
 
-# ==========================================
+
 # ADMINISTRATOR - SECURITY NOTIFICATIONS
-# ==========================================
 
 @app.route("/admin/notifications")
 @login_required(role="admin")
@@ -425,7 +382,6 @@ def admin_notifications():
     notifications = []
     api_error = None
 
-    # Retrieve notifications from AWS API Gateway
     try:
         notifications = get_notifications(token)
 
@@ -440,9 +396,7 @@ def admin_notifications():
         api_error=api_error
     )
 
-# ==========================================
 # EMPLOYEE DASHBOARD
-# ==========================================
 
 @app.route("/employee/dashboard")
 @login_required(role="employee")
@@ -454,15 +408,12 @@ def employee_dashboard():
     )
 
 
-# ==========================================
 # LOGOUT
-# ==========================================
 
 @app.route("/logout", methods=["POST"])
 @login_required()
 def logout():
 
-    # Clear server-side authentication session
     session.clear()
 
     return redirect(
@@ -470,10 +421,7 @@ def logout():
     )
 
 
-# ==========================================
 # RUN FLASK APPLICATION
-# ==========================================
-
 if __name__ == "__main__":
 
     app.run(
