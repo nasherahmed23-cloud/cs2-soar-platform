@@ -1,0 +1,271 @@
+{% extends "employee_base.html" %}
+
+{% block title %}
+My Profile | Innovatech SOAR
+{% endblock %}
+
+{% block content %}
+
+<!-- ==========================================
+     PAGE HEADER
+     ========================================== -->
+
+<div class="page-heading">
+
+    <div>
+
+        <p class="page-category">
+            EMPLOYEE PORTAL / ACCOUNT
+        </p>
+
+        <h1>My Profile</h1>
+
+        <p class="page-description">
+            View your Innovatech SOAR account
+            and assigned access information.
+        </p>
+
+    </div>
+
+    <div class="dashboard-header-actions">
+
+        <span class="data-scope">
+            Account Information
+        </span>
+
+    </div>
+
+</div>
+
+
+<!-- ==========================================
+     PROFILE OVERVIEW
+     ========================================== -->
+
+<section class="dashboard-section">
+
+    <div class="section-heading">
+
+        <div>
+
+            <h2>Employee Account</h2>
+
+            <p>
+                Your authenticated account information.
+            </p>
+
+        </div>
+
+        <span class="section-label">
+            MY ACCOUNT
+        </span>
+
+    </div>
+
+
+    <!-- PROFILE HEADER -->
+
+    <div class="employee-profile-header">
+
+        <div class="employee-profile-avatar">
+            {{ (user.email | default('E', true))[0] | upper }}
+        </div>
+
+        <div class="employee-profile-identity">
+
+            <h2>
+                {{ user.email | default('Employee', true) }}
+            </h2>
+
+            <p>
+                Innovatech SOAR Employee
+            </p>
+
+            <span class="employee-profile-role">
+                EMPLOYEE ACCESS
+            </span>
+
+        </div>
+
+    </div>
+
+
+    <!-- PROFILE DETAILS -->
+
+    <div class="employee-profile-grid">
+
+        <div class="employee-profile-field">
+
+            <span class="employee-profile-label">
+                User ID
+            </span>
+
+            <strong>
+                {{ user.user_id | default('Not available', true) }}
+            </strong>
+
+        </div>
+
+
+        <div class="employee-profile-field">
+
+            <span class="employee-profile-label">
+                Email Address
+            </span>
+
+            <strong>
+                {{ user.email | default('Not available', true) }}
+            </strong>
+
+        </div>
+
+
+        <div class="employee-profile-field">
+
+            <span class="employee-profile-label">
+                Access Role
+            </span>
+
+            <strong>
+                {{ user.role | default('Unknown', true) | title }}
+            </strong>
+
+        </div>
+
+
+        <div class="employee-profile-field">
+
+            <span class="employee-profile-label">
+                Employee Identifier
+            </span>
+
+            <strong>
+                {{ user.employee_identifier | default('Not assigned', true) }}
+            </strong>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- ==========================================
+     ACCESS INFORMATION
+     ========================================== -->
+
+<section class="dashboard-section">
+
+    <div class="section-heading">
+
+        <div>
+
+            <h2>Security Access</h2>
+
+            <p>
+                Information about your permissions
+                within Innovatech SOAR.
+            </p>
+
+        </div>
+
+        <span class="section-label">
+            ACCESS CONTROL
+        </span>
+
+    </div>
+
+
+    <div class="employee-access-information">
+
+        <div class="employee-access-item">
+
+            <div class="employee-access-icon">
+                ▦
+            </div>
+
+            <div>
+
+                <h3>
+                    Employee Dashboard
+                </h3>
+
+                <p>
+                    View security events and notifications
+                    returned for your employee account.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <div class="employee-access-item">
+
+            <div class="employee-access-icon">
+                ▤
+            </div>
+
+            <div>
+
+                <h3>
+                    Security Alerts
+                </h3>
+
+                <p>
+                    Review notifications associated with
+                    your employee account.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <div class="employee-access-item">
+
+            <div class="employee-access-icon">
+                ⛨
+            </div>
+
+            <div>
+
+                <h3>
+                    Restricted Administration
+                </h3>
+
+                <p>
+                    Administrator dashboards, incident management,
+                    and administrative functions are not accessible
+                    with an employee account.
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- ==========================================
+     PROFILE LIMITATIONS
+     ========================================== -->
+
+<div class="dashboard-data-notice">
+
+    <strong>Account Management</strong>
+
+    <p>
+        Your account information is provided by the
+        Innovatech SOAR authentication service.
+
+        Profile editing, password changes, and device
+        management are not currently supported by
+        the available API endpoints.
+    </p>
+
+</div>
+
+{% endblock %}

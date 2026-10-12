@@ -402,11 +402,95 @@ def admin_notifications():
 @login_required(role="employee")
 def employee_dashboard():
 
+    token = session["token"]
+
+    events = []
+    notifications = []
+    api_errors = []
+
+    # Retrieve employee-specific security events
+    try:
+        events = get_events(token)
+
+    except APIClientError as error:
+        api_errors.append(f"Events: {error}")
+
+    # Retrieve employee-specific notifications
+    try:
+        notifications = get_notifications(token)
+
+    except APIClientError as error:
+        api_errors.append(f"Notifications: {error}")
+
+    # Calculate statistics from retrieved records
+    stats = {
+        "total_events": len(events),
+
+        "high_severity_events": sum(
+            1
+            for event in events
+            if str(event.get("severity", "")).lower()
+            in ("high", "critical")
+        ),
+
+        "total_notifications": len(notifications),
+
+        "unread_notifications": sum(
+            1
+            for notification in notifications
+            if str(notification.get("status", "")).lower() == "unread"
+        )
+    }
+
     return render_template(
         "employee/dashboard.html",
-        user=session["user"]
+        user=session["user"],
+        active_page="dashboard",
+        events=events[:10],
+        notifications=notifications[:10],
+        stats=stats,
+        api_errors=api_errors
     )
 
+
+# EMPLOYEE - MY SECURITY ALERTS
+
+@app.route("/employee/alerts")
+@login_required(role="employee")
+def employee_alerts():
+
+    notifications = []
+    api_error = None
+
+    # Retrieve employee-authorized notifications
+    try:
+        notifications = get_notifications(session["token"])
+
+    except APIClientError as error:
+        api_error = str(error)
+
+    return render_template(
+        "employee/alerts.html",
+        user=session["user"],
+        active_page="alerts",
+        notifications=notifications,
+        api_error=api_error
+    )
+
+
+# EMPLOYEE - PROFILE
+
+@app.route("/employee/profile")
+@login_required(role="employee")
+def employee_profile():
+
+    user = session["user"]
+
+    return render_template(
+        "employee/profile.html",
+        user=user,
+        active_page="profile"
+    )
 
 # LOGOUT
 

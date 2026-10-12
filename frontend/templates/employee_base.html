@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>
+        {% block title %}Innovatech SOAR | Employee{% endblock %}
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/dashboard.css') }}"
+    >
+
+    {% block styles %}{% endblock %}
+</head>
+
+<body>
+
+<div class="app-layout">
+
+    <!-- ==========================================
+         EMPLOYEE SIDEBAR
+         ========================================== -->
+
+    <aside class="sidebar">
+
+        <!-- BRANDING -->
+
+        <div class="sidebar-brand">
+
+            <div class="brand-icon">
+                ♢
+            </div>
+
+            <div class="brand-name">
+                Innovatech <span>SOAR</span>
+            </div>
+
+        </div>
+
+
+        <!-- SIDEBAR CONTENT -->
+
+        <div class="sidebar-content">
+
+            <div class="operations-status">
+
+                <span class="status-dot"></span>
+
+                <div>
+                    <strong>Employee Portal</strong>
+                    <small>Innovatech Solutions</small>
+                </div>
+
+            </div>
+
+
+            <p class="nav-section-title">
+                MY SECURITY
+            </p>
+
+
+            <!-- EMPLOYEE NAVIGATION -->
+
+            <nav class="sidebar-nav">
+
+                <!-- EMPLOYEE DASHBOARD -->
+
+                <a
+                    href="{{ url_for('employee_dashboard') }}"
+                    class="nav-link {% if active_page == 'dashboard' %}active{% endif %}"
+                    {% if active_page == 'dashboard' %}
+                    aria-current="page"
+                    {% endif %}
+                >
+                    <span class="nav-icon">▦</span>
+                    My Dashboard
+                </a>
+
+
+                <!-- SECURITY ALERTS - FUTURE STEP -->
+
+                <a
+                    href="{{ url_for('employee_alerts') }}"
+                    class="nav-link {% if active_page == 'alerts' %}active{% endif %}"
+                    {% if active_page == 'alerts' %}
+                    aria-current="page"
+                    {% endif %}
+                >
+                <span class="nav-icon">▤</span>
+                My Security Alerts
+                </a>
+
+
+                <!-- MY DEVICE - API NOT IMPLEMENTED -->
+
+                <a
+                    href="{{ url_for('employee_profile') }}"
+                    class="nav-link {% if active_page == 'profile' %}active{% endif %}"
+                    {% if active_page == 'profile' %}
+                    aria-current="page"
+                    {% endif %}
+                >
+                    <span class="nav-icon">♙</span>
+                    Profile
+                </a>
+
+
+                <!-- REPORT SECURITY ISSUE - API NOT IMPLEMENTED -->
+
+                <a
+                    href="#"
+                    class="nav-link disabled"
+                    aria-disabled="true"
+                    tabindex="-1"
+                >
+                    <span class="nav-icon">!</span>
+                    Report Security Issue
+                </a>
+
+
+                <!-- EMPLOYEE PROFILE - FUTURE STEP -->
+
+                <a
+                    href="#"
+                    class="nav-link disabled"
+                    aria-disabled="true"
+                    tabindex="-1"
+                >
+                    <span class="nav-icon">♙</span>
+                    Profile
+                </a>
+
+            </nav>
+
+        </div>
+
+
+        <!-- ==========================================
+             SIDEBAR FOOTER
+             ========================================== -->
+
+        <div class="sidebar-footer">
+
+            <div class="access-level">
+
+                <span>
+                    ACCESS LEVEL
+                </span>
+
+                <strong>
+                    SOAR Employee
+                </strong>
+
+            </div>
+
+
+            <!-- LOGOUT -->
+
+            <form
+                action="{{ url_for('logout') }}"
+                method="POST"
+            >
+
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token() }}"
+                >
+
+                <button
+                    type="submit"
+                    class="logout-button"
+                >
+                    ↪ &nbsp; Logout
+                </button>
+
+            </form>
+
+        </div>
+
+    </aside>
+
+
+    <!-- ==========================================
+         EMPLOYEE MAIN AREA
+         ========================================== -->
+
+    <div class="main-area">
+
+        <!-- TOP HEADER -->
+
+        <header class="top-header">
+
+            <!-- PORTAL INFORMATION -->
+
+            <div class="system-status">
+
+                <span class="status-dot"></span>
+
+                <span>
+                    EMPLOYEE SECURITY PORTAL
+                </span>
+
+                <span class="status-placeholder">
+                    STATUS NOT CONNECTED
+                </span>
+
+            </div>
+
+
+            <!-- HEADER ACTIONS -->
+
+            <div class="header-actions">
+
+                <!-- USER INFORMATION -->
+
+                <div class="user-info">
+
+                    <div class="user-avatar">
+                        EU
+                    </div>
+
+                    <div>
+
+                        <strong>
+                            {{ user.email if user is defined else 'Employee' }}
+                        </strong>
+
+                        <small>
+                            SOAR Employee
+                        </small>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </header>
+
+
+        <!-- ==========================================
+             EMPLOYEE PAGE CONTENT
+             ========================================== -->
+
+        <main class="page-content">
+
+            {% block content %}{% endblock %}
+
+        </main>
+
+    </div>
+
+</div>
+
+
+<!-- PAGE-SPECIFIC JAVASCRIPT -->
+
+{% block scripts %}{% endblock %}
+
+</body>
+</html>

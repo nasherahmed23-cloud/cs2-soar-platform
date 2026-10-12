@@ -2146,3 +2146,216 @@ body {
     overflow-wrap: anywhere;
     line-height: 1.6;
 }
+/* ==========================================
+   EMPLOYEE SECURITY ALERTS
+   ========================================== */
+
+#employeeAlertsTable {
+    min-width: 1050px;
+}
+
+#employeeAlertsTable td {
+    vertical-align: middle;
+}
+
+#employeeAlertsTable .employee-alert-row[hidden] {
+    display: none;
+}
+
+#noMatchingAlerts[hidden] {
+    display: none;
+}
+
+#detailEmployeeAlertMessage {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.6;
+}
+/* ==========================================
+   EMPLOYEE PROFILE
+   ========================================== */
+
+.employee-profile-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+
+    padding: 24px;
+    margin-top: 20px;
+
+    background: rgba(59, 130, 246, 0.06);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    border-radius: 12px;
+}
+
+.employee-profile-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 72px;
+    height: 72px;
+
+    flex-shrink: 0;
+
+    border-radius: 50%;
+
+    background: rgba(59, 130, 246, 0.18);
+    border: 1px solid rgba(59, 130, 246, 0.35);
+
+    color: #93c5fd;
+
+    font-size: 30px;
+    font-weight: 700;
+}
+
+.employee-profile-identity h2 {
+    margin: 0 0 6px;
+
+    color: #f1f5f9;
+    font-size: 20px;
+}
+
+.employee-profile-identity p {
+    margin: 0 0 12px;
+
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+.employee-profile-role {
+    display: inline-block;
+
+    padding: 6px 10px;
+
+    border-radius: 6px;
+
+    background: rgba(59, 130, 246, 0.15);
+
+    color: #93c5fd;
+
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+
+/* PROFILE DETAILS */
+
+.employee-profile-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.employee-profile-field {
+    display: flex;
+    flex-direction: column;
+
+    gap: 10px;
+
+    padding: 20px;
+
+    background: rgba(15, 23, 42, 0.35);
+
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: 10px;
+
+    min-width: 0;
+}
+
+.employee-profile-label {
+    color: #94a3b8;
+
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.employee-profile-field strong {
+    color: #f1f5f9;
+
+    font-size: 14px;
+    font-weight: 600;
+
+    overflow-wrap: anywhere;
+}
+
+
+/* SECURITY ACCESS */
+
+.employee-access-information {
+    display: flex;
+    flex-direction: column;
+
+    gap: 14px;
+    margin-top: 20px;
+}
+
+.employee-access-item {
+    display: flex;
+    align-items: flex-start;
+
+    gap: 16px;
+
+    padding: 18px 20px;
+
+    background: rgba(15, 23, 42, 0.35);
+
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: 10px;
+}
+
+.employee-access-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 40px;
+    height: 40px;
+
+    flex-shrink: 0;
+
+    background: rgba(59, 130, 246, 0.12);
+    border-radius: 8px;
+
+    color: #93c5fd;
+    font-size: 20px;
+}
+
+.employee-access-item h3 {
+    margin: 0 0 6px;
+
+    color: #f1f5f9;
+    font-size: 14px;
+}
+
+.employee-access-item p {
+    margin: 0;
+
+    color: #94a3b8;
+
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+
+/* RESPONSIVE LAYOUT */
+
+@media (max-width: 768px) {
+
+    .employee-profile-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .employee-profile-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .employee-profile-identity h2 {
+        overflow-wrap: anywhere;
+    }
+
+}

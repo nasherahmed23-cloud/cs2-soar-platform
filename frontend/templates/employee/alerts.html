@@ -1,0 +1,535 @@
+{% extends "employee_base.html" %}
+
+{% block title %}My Security Alerts | Innovatech SOAR{% endblock %}
+
+{% block content %}
+
+<!-- ==========================================
+     PAGE HEADER
+     ========================================== -->
+
+<div class="page-heading">
+
+    <div>
+        <p class="page-category">
+            EMPLOYEE PORTAL / SECURITY ALERTS
+        </p>
+
+        <h1>My Security Alerts</h1>
+
+        <p class="page-description">
+            Review security notifications associated
+            with your employee account.
+        </p>
+    </div>
+
+    <div class="dashboard-header-actions">
+        <span class="data-scope">
+            Latest 100 notifications
+        </span>
+    </div>
+
+</div>
+
+
+<!-- ==========================================
+     API ERROR HANDLING
+     ========================================== -->
+
+{% if api_error %}
+
+<div class="dashboard-errors" role="alert">
+    <h3>Unable to retrieve security alerts</h3>
+    <p>{{ api_error }}</p>
+</div>
+
+{% else %}
+
+<!-- ==========================================
+     ALERT SUMMARY
+     ========================================== -->
+
+{% set counts = namespace(high=0, critical=0, unread=0) %}
+
+{% for notification in notifications %}
+
+    {% set severity = notification.severity
+        | default('', true) | lower %}
+
+    {% set status = notification.status
+        | default('', true) | lower %}
+
+    {% if severity == 'high' %}
+        {% set counts.high = counts.high + 1 %}
+    {% endif %}
+
+    {% if severity == 'critical' %}
+        {% set counts.critical = counts.critical + 1 %}
+    {% endif %}
+
+    {% if status == 'unread' %}
+        {% set counts.unread = counts.unread + 1 %}
+    {% endif %}
+
+{% endfor %}
+
+
+<section class="event-summary">
+
+    <div class="event-summary-card">
+
+        <span class="event-summary-label">
+            My Security Alerts
+        </span>
+
+        <strong>
+            {{ notifications | length }}
+        </strong>
+
+        <small>
+            Retrieved notifications for your account
+        </small>
+
+    </div>
+
+
+    <div class="event-summary-card">
+
+        <span class="event-summary-label">
+            High / Critical Alerts
+        </span>
+
+        <strong>
+            {{ counts.high + counts.critical }}
+        </strong>
+
+        <small>
+            Higher-severity security notifications
+        </small>
+
+    </div>
+
+
+    <div class="event-summary-card">
+
+        <span class="event-summary-label">
+            Unread Alerts
+        </span>
+
+        <strong>
+            {{ counts.unread }}
+        </strong>
+
+        <small>
+            Notifications currently marked unread
+        </small>
+
+    </div>
+
+</section>
+
+{% endif %}
+
+
+<!-- ==========================================
+     SECURITY ALERT RECORDS
+     ========================================== -->
+
+<section class="dashboard-section">
+
+    <div class="section-heading">
+
+        <div>
+            <h2>My Alert Records</h2>
+
+            <p>
+                Search and inspect notifications associated
+                with your workstation.
+            </p>
+        </div>
+
+        <span class="section-label">
+            SECURITY ALERTS
+        </span>
+
+    </div>
+
+
+    <!-- SEARCH AND FILTERS -->
+
+    <div class="event-filters">
+
+        <div class="event-search">
+
+            <label for="alertSearch">
+                Search Alerts
+            </label>
+
+            <input
+                type="search"
+                id="alertSearch"
+                placeholder="Search by ID, title, or message..."
+                {% if api_error %}disabled{% endif %}
+            >
+
+        </div>
+
+
+        <div class="event-filter-group">
+
+            <label for="alertSeverityFilter">
+                Severity
+            </label>
+
+            <select
+                id="alertSeverityFilter"
+                {% if api_error %}disabled{% endif %}
+            >
+                <option value="all">All Severities</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+                <option value="info">Info</option>
+            </select>
+
+        </div>
+
+
+        <div class="event-filter-group">
+
+            <label for="alertStatusFilter">
+                Status
+            </label>
+
+            <select
+                id="alertStatusFilter"
+                {% if api_error %}disabled{% endif %}
+            >
+                <option value="all">All Statuses</option>
+
+                {% if not api_error %}
+
+                    {% set statuses = notifications
+                        | map(attribute='status')
+                        | map('default', 'unknown', true)
+                        | map('lower')
+                        | unique
+                        | list %}
+
+                    {% for status in statuses %}
+                    <option value="{{ status }}">
+                        {{ status | title }}
+                    </option>
+                    {% endfor %}
+
+                {% endif %}
+            </select>
+
+        </div>
+
+
+        <div class="event-filter-actions">
+
+            <button
+                type="button"
+                id="resetAlertFilters"
+                class="btn-secondary"
+                {% if api_error %}disabled{% endif %}
+            >
+                Reset Filters
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- RESULTS COUNT -->
+
+    <div class="event-results-bar">
+
+        <span id="alertResultsCount">
+
+            {% if api_error %}
+                Security alerts unavailable
+            {% else %}
+                Showing {{ notifications | length }} of
+                {{ notifications | length }} retrieved alerts
+            {% endif %}
+
+        </span>
+
+        <span class="event-results-note">
+            Client-side filtering
+        </span>
+
+    </div>
+
+
+    <!-- ALERTS TABLE -->
+
+    <div class="dashboard-table-container">
+
+        <table
+            class="dashboard-table"
+            id="employeeAlertsTable"
+        >
+
+            <thead>
+                <tr>
+                    <th>Alert ID</th>
+                    <th>Title</th>
+                    <th>Severity</th>
+                    <th>Status</th>
+                    <th>Event ID</th>
+                    <th>Incident ID</th>
+                    <th>Created At</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% if api_error %}
+
+                <tr>
+                    <td colspan="8" class="empty-state">
+                        Security alerts could not be retrieved.
+                    </td>
+                </tr>
+
+                {% else %}
+
+                    {% for notification in notifications %}
+
+                    {% set severity = notification.severity
+                        | default('unknown', true) | lower %}
+
+                    {% set status = notification.status
+                        | default('unknown', true) | lower %}
+
+                    <tr
+                        class="employee-alert-row"
+                        data-alert-id="{{ notification.notification_id | default('', true) }}"
+                        data-title="{{ notification.title | default('', true) }}"
+                        data-message="{{ notification.message | default('', true) }}"
+                        data-severity="{{ severity }}"
+                        data-status="{{ status }}"
+                        data-event-id="{{ notification.event_id | default('', true) }}"
+                        data-incident-id="{{ notification.incident_id | default('', true) }}"
+                        data-created="{{ notification.created_at | default('', true) }}"
+                    >
+
+                        <td class="record-id">
+                            #{{ notification.notification_id | default('N/A', true) }}
+                        </td>
+
+                        <td>
+                            <strong>
+                                {{ notification.title | default('Untitled', true) }}
+                            </strong>
+                        </td>
+
+                        <td>
+                            <span class="badge badge-{{ severity }}">
+                                {{ severity | upper }}
+                            </span>
+                        </td>
+
+                        <td>
+                            {{ status | title }}
+                        </td>
+
+                        <td class="monospace">
+                            {% if notification.event_id is defined
+                                and notification.event_id is not none
+                                and notification.event_id != '' %}
+                                #{{ notification.event_id }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+
+                        <td class="monospace">
+                            {% if notification.incident_id is defined
+                                and notification.incident_id is not none
+                                and notification.incident_id != '' %}
+                                #{{ notification.incident_id }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+
+                        <td class="timestamp">
+                            {{ notification.created_at | default('N/A', true) }}
+                        </td>
+
+                        <td>
+                            <button
+                                type="button"
+                                class="event-details-button employee-alert-details-button"
+                                aria-label="View alert {{ notification.notification_id }}"
+                            >
+                                View
+                            </button>
+                        </td>
+
+                    </tr>
+
+                    {% else %}
+
+                    <tr>
+                        <td colspan="8" class="empty-state">
+                            No security alerts are available for your account.
+                        </td>
+                    </tr>
+
+                    {% endfor %}
+
+                {% endif %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+
+    <!-- NO MATCHING FILTER RESULTS -->
+
+    <div
+        id="noMatchingAlerts"
+        class="empty-state"
+        hidden
+    >
+        No alerts match the selected filters.
+    </div>
+
+</section>
+
+
+<!-- ==========================================
+     ALERT DETAILS DIALOG
+     ========================================== -->
+
+<dialog
+    id="employeeAlertDetailsDialog"
+    class="event-details-dialog"
+    aria-labelledby="employeeAlertDetailsTitle"
+>
+
+    <div class="event-dialog-header">
+
+        <div>
+            <p class="page-category">
+                EMPLOYEE SECURITY ALERT / DETAILS
+            </p>
+
+            <h2 id="employeeAlertDetailsTitle">
+                Security Alert Details
+            </h2>
+        </div>
+
+        <button
+            type="button"
+            id="closeEmployeeAlertDetails"
+            class="event-dialog-close"
+            aria-label="Close alert details"
+        >
+            &times;
+        </button>
+
+    </div>
+
+
+    <div class="event-details-content">
+
+        <div class="event-detail-item">
+            <span>Alert ID</span>
+            <strong id="detailEmployeeAlertId">—</strong>
+        </div>
+
+        <div class="event-detail-item">
+            <span>Title</span>
+            <strong id="detailEmployeeAlertTitle">—</strong>
+        </div>
+
+        <div class="event-detail-item">
+            <span>Severity</span>
+            <strong id="detailEmployeeAlertSeverity">—</strong>
+        </div>
+
+        <div class="event-detail-item">
+            <span>Status</span>
+            <strong id="detailEmployeeAlertStatus">—</strong>
+        </div>
+
+        <div class="event-detail-item">
+            <span>Associated Event</span>
+            <strong id="detailEmployeeAlertEventId">—</strong>
+        </div>
+
+        <div class="event-detail-item">
+            <span>Associated Incident</span>
+            <strong id="detailEmployeeAlertIncidentId">—</strong>
+        </div>
+
+        <div class="event-detail-item">
+            <span>Created At</span>
+            <strong id="detailEmployeeAlertCreated">—</strong>
+        </div>
+
+        <div class="event-detail-item event-detail-message">
+            <span>Alert Message</span>
+            <p id="detailEmployeeAlertMessage">—</p>
+        </div>
+
+    </div>
+
+
+    <div class="event-dialog-footer">
+
+        <button
+            type="button"
+            id="closeEmployeeAlertDetailsFooter"
+            class="btn-secondary"
+        >
+            Close
+        </button>
+
+    </div>
+
+</dialog>
+
+
+<!-- ==========================================
+     DATA SCOPE NOTICE
+     ========================================== -->
+
+<div class="dashboard-data-notice">
+
+    <strong>About Your Security Alerts</strong>
+
+    <p>
+        This page displays up to 100 recent notifications
+        returned by the Innovatech SOAR API for your account.
+        Search and filtering apply only to these records.
+
+        Notification status updates and dismissal are not
+        supported by the current backend.
+    </p>
+
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script
+    src="{{ url_for('static', filename='js/employee_alerts.js') }}"
+    defer
+></script>
+
+{% endblock %}
