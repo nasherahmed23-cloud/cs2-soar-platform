@@ -1,3 +1,7 @@
+# =========================================================
+# INNOVATECH SOAR - EVENT COLLECTOR
+# =========================================================
+
 import json
 import boto3
 import pymysql
@@ -5,7 +9,12 @@ import hashlib
 import hmac
 import time
 import jwt
+from datetime import datetime, timezone
 
+
+# =========================================================
+# AWS CONFIGURATION
+# =========================================================
 
 ssm = boto3.client("ssm")
 
@@ -19,6 +28,11 @@ DB_PARAMETER_NAMES = [
     "/innovatech/soar/db/user"
 ]
 
+
+# =========================================================
+# SECURITY EVENT CONFIGURATION
+# =========================================================
+
 REQUIRED_FIELDS = [
     "event_type",
     "source",
@@ -29,14 +43,143 @@ REQUIRED_FIELDS = [
 ]
 
 
+# =========================================================
+# CENTRALIZED DETECTION RULES
+# =========================================================
+
+DETECTION_RULES = [
+    {
+        "name": "suspicious_failed_login",
+        "event_type": "failed_login",
+        "severity": "high",
+        "title": "Suspicious Failed Login"
+    }
+]
+
+
+# =========================================================
+# API RESPONSE HELPER
+# =========================================================
+
+def api_response(status_code, data):
+    return {
+        "statusCode": status_code,
+        "headers": {
+            "Content-Type": "application/json"
+        },
+        "body": json.dumps(data)
+    }
+
+
+# =========================================================
+# DETECTION ENGINE
+# =========================================================
+
+def evaluate_rules(event_data):
+
+    matched_rules = []
+
+    for rule in DETECTION_RULES:
+
+        if (
+            event_data["event_type"] == rule["event_type"]
+            and event_data["severity"].lower() == rule["severity"]
+        ):
+
+            matched_rules.append(rule["name"])
+
+    return {
+        "matched": len(matched_rules) > 0,
+        "matched_rules": matched_rules
+    }
+
+
+# =========================================================
+# INCIDENT MANAGEMENT
+# =========================================================
+
+def create_incident(
+    connection,
+    event_id,
+    event_data,
+    matched_rules
+):
+
+    if not matched_rules:
+        raise ValueError(
+            "Cannot create incident without matched rules"
+        )
+
+    primary_rule = matched_rules[0]
+
+    with connection.cursor() as cursor:
+
+        # Create ONE consolidated incident
+
+        sql = """
+            INSERT INTO incidents
+            (
+                event_id,
+                rule_name,
+                severity
+            )
+            VALUES (%s, %s, %s)
+        """
+
+        cursor.execute(
+            sql,
+            (
+                event_id,
+                primary_rule,
+                event_data["severity"]
+            )
+        )
+
+        incident_id = cursor.lastrowid
+
+        # Associate ALL matched rules with the incident
+
+        sql_rules = """
+            INSERT INTO incident_rules
+            (
+                incident_id,
+                rule_name
+            )
+            VALUES (%s, %s)
+        """
+
+        for rule_name in matched_rules:
+
+            cursor.execute(
+                sql_rules,
+                (
+                    incident_id,
+                    rule_name
+                )
+            )
+
+    return incident_id
+
+
+# =========================================================
+# NOTIFICATION MANAGEMENT
+# =========================================================
+
 def create_notification(
     connection,
     event_id,
     incident_id,
     event_data,
-    rule_name
+    matched_rules
 ):
+
+    if not matched_rules:
+        raise ValueError(
+            "Cannot create notification without matched rules"
+        )
+
     with connection.cursor() as cursor:
+
         sql = """
             INSERT INTO notifications
             (
@@ -49,12 +192,42 @@ def create_notification(
             VALUES (%s, %s, %s, %s, %s)
         """
 
-        title = "Suspicious Failed Login"
+        # Identify the primary detection rule
+
+        primary_rule = matched_rules[0]
+
+        rule_config = next(
+            (
+                rule
+                for rule in DETECTION_RULES
+                if rule["name"] == primary_rule
+            ),
+            None
+        )
+
+        # Generate notification title dynamically
+
+        if len(matched_rules) > 1:
+
+            title = "Multiple Security Rules Triggered"
+
+        elif rule_config:
+
+            title = rule_config["title"]
+
+        else:
+
+            title = "Security Incident Detected"
+
+        # Generate consolidated notification message
+
+        rule_names = ", ".join(matched_rules)
 
         message = (
-            f"Rule {rule_name} matched for "
+            f"Security incident detected for "
             f"{event_data['source']} "
-            f"from IP {event_data['source_ip']}."
+            f"from IP {event_data['source_ip']}. "
+            f"Matched rules: {rule_names}."
         )
 
         cursor.execute(
@@ -73,50 +246,187 @@ def create_notification(
     return notification_id
 
 
-def create_incident(connection, event_id, event_data, rule_name):
+# =========================================================
+# SECURITY EVENT STORAGE
+# =========================================================
+
+def store_security_event(connection, event_data):
+
     with connection.cursor() as cursor:
+
         sql = """
-            INSERT INTO incidents
+            INSERT INTO security_events
             (
-                event_id,
-                rule_name,
-                severity
+                event_type,
+                source,
+                source_ip,
+                severity,
+                event_timestamp,
+                message
             )
-            VALUES (%s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s)
         """
 
         cursor.execute(
             sql,
             (
-                event_id,
-                rule_name,
-                event_data["severity"]
+                event_data["event_type"],
+                event_data["source"],
+                event_data["source_ip"],
+                event_data["severity"],
+                event_data["timestamp"],
+                event_data["message"]
             )
         )
 
-        incident_id = cursor.lastrowid
+        event_id = cursor.lastrowid
 
-    return incident_id
+    return event_id
 
 
-def evaluate_rules(event_data):
-    if (
-        event_data["event_type"] == "failed_login"
-        and event_data["severity"].lower() == "high"
-    ):
+# =========================================================
+# CENTRALIZED EVENT PROCESSOR
+# =========================================================
+
+def process_security_event(connection, event_data):
+
+    incident_id = None
+    notification_id = None
+
+    try:
+
+        # Validate and normalize the timestamp
+
+        timestamp_value = event_data["timestamp"]
+
+        parsed_timestamp = datetime.fromisoformat(
+            timestamp_value.replace("Z", "+00:00")
+        )
+
+        if parsed_timestamp.tzinfo is not None:
+            parsed_timestamp = parsed_timestamp.astimezone(
+                timezone.utc
+            )
+
+        normalized_event = event_data.copy()
+
+        normalized_event["timestamp"] = (
+            parsed_timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        )
+
+        # Start one database transaction for the event
+
+        connection.begin()
+
+        # Step 1: Store incoming security event
+
+        event_id = store_security_event(
+            connection,
+            normalized_event
+        )
+
+        print(
+            f"Security event stored. "
+            f"Event ID: {event_id}"
+        )
+
+        # Step 2: Evaluate ALL detection rules
+
+        rule_result = evaluate_rules(
+            event_data
+        )
+
+        matched_rules = rule_result["matched_rules"]
+
+        # Step 3: Execute automated responses
+
+        if matched_rules:
+
+            print(
+                f"Detection rules matched: "
+                f"{matched_rules}"
+            )
+
+            # Create ONE consolidated incident
+
+            incident_id = create_incident(
+                connection,
+                event_id,
+                event_data,
+                matched_rules
+            )
+
+            # Create ONE consolidated notification
+
+            notification_id = create_notification(
+                connection,
+                event_id,
+                incident_id,
+                event_data,
+                matched_rules
+            )
+
+            print(
+                f"Incident {incident_id} created. "
+                f"Notification {notification_id} created."
+            )
+
+        else:
+
+            print(
+                f"No detection rules matched "
+                f"event ID: {event_id}"
+            )
+
+        # Step 4: Commit all changes together
+
+        connection.commit()
+
+        print(
+            f"Security event {event_id} "
+            f"processed successfully."
+        )
+
         return {
-            "matched": True,
-            "rule_name": "suspicious_failed_login"
+            "status": "processed",
+            "message": "Security event processed successfully",
+            "event_id": event_id,
+            "rule_matched": rule_result["matched"],
+            "rule_name": (
+                matched_rules[0]
+                if matched_rules
+                else None
+            ),
+            "matched_rules": matched_rules,
+            "incident_id": incident_id,
+            "notification_id": notification_id
         }
 
-    return {
-        "matched": False,
-        "rule_name": None
-    }
+    except Exception:
 
+        # Roll back event, incident, rules and notification
+        # if any database operation fails
+
+        connection.rollback()
+
+        print(
+            "Security event processing failed. "
+            "Database transaction rolled back."
+        )
+
+        raise
+
+
+# =========================================================
+# SECURITY EVENT RETRIEVAL
+# =========================================================
 
 def get_events(connection):
-    with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+
+    with connection.cursor(
+        pymysql.cursors.DictCursor
+    ) as cursor:
+
         sql = """
             SELECT
                 event_id,
@@ -134,11 +444,19 @@ def get_events(connection):
         """
 
         cursor.execute(sql)
+
         return cursor.fetchall()
 
 
-def get_employee_events(connection, employee_identifier):
-    with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+def get_employee_events(
+    connection,
+    employee_identifier
+):
+
+    with connection.cursor(
+        pymysql.cursors.DictCursor
+    ) as cursor:
+
         sql = """
             SELECT
                 event_id,
@@ -164,8 +482,16 @@ def get_employee_events(connection, employee_identifier):
         return cursor.fetchall()
 
 
+# =========================================================
+# INCIDENT RETRIEVAL
+# =========================================================
+
 def get_incidents(connection):
-    with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+
+    with connection.cursor(
+        pymysql.cursors.DictCursor
+    ) as cursor:
+
         sql = """
             SELECT
                 incident_id,
@@ -181,11 +507,20 @@ def get_incidents(connection):
         """
 
         cursor.execute(sql)
+
         return cursor.fetchall()
 
 
+# =========================================================
+# NOTIFICATION RETRIEVAL
+# =========================================================
+
 def get_notifications(connection):
-    with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+
+    with connection.cursor(
+        pymysql.cursors.DictCursor
+    ) as cursor:
+
         sql = """
             SELECT
                 notification_id,
@@ -202,6 +537,7 @@ def get_notifications(connection):
         """
 
         cursor.execute(sql)
+
         return cursor.fetchall()
 
 
@@ -209,7 +545,11 @@ def get_employee_notifications(
     connection,
     employee_identifier
 ):
-    with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+
+    with connection.cursor(
+        pymysql.cursors.DictCursor
+    ) as cursor:
+
         sql = """
             SELECT
                 n.notification_id,
@@ -236,17 +576,31 @@ def get_employee_notifications(
         return cursor.fetchall()
 
 
+# =========================================================
+# DATABASE SERIALIZATION
+# =========================================================
+
 def serialize_rows(rows):
+
     for row in rows:
+
         for key, value in row.items():
+
             if hasattr(value, "isoformat"):
+
                 row[key] = value.isoformat()
 
     return rows
 
 
+# =========================================================
+# PASSWORD VERIFICATION
+# =========================================================
+
 def verify_password(password, stored_hash):
+
     try:
+
         algorithm, iterations, salt, expected_hash = (
             stored_hash.split("$")
         )
@@ -266,12 +620,20 @@ def verify_password(password, stored_hash):
             expected_hash
         )
 
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, AttributeError):
         return False
 
 
+# =========================================================
+# USER MANAGEMENT
+# =========================================================
+
 def get_user_by_email(connection, email):
-    with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+
+    with connection.cursor(
+        pymysql.cursors.DictCursor
+    ) as cursor:
+
         sql = """
             SELECT
                 user_id,
@@ -292,7 +654,12 @@ def get_user_by_email(connection, email):
         return cursor.fetchone()
 
 
+# =========================================================
+# JWT AUTHENTICATION
+# =========================================================
+
 def create_jwt(user, jwt_secret):
+
     current_time = int(time.time())
 
     payload = {
@@ -312,6 +679,7 @@ def create_jwt(user, jwt_secret):
 
 
 def get_authenticated_user(event):
+
     headers = event.get("headers") or {}
 
     authorization_header = (
@@ -320,44 +688,41 @@ def get_authenticated_user(event):
     )
 
     if not authorization_header:
-        return None, {
-            "statusCode": 401,
-            "headers": {
-                "Content-Type": "application/json"
-            },
-            "body": json.dumps({
+
+        return None, api_response(
+            401,
+            {
                 "status": "error",
                 "message": "Authorization token required"
-            })
-        }
+            }
+        )
 
     if not authorization_header.startswith("Bearer "):
-        return None, {
-            "statusCode": 401,
-            "headers": {
-                "Content-Type": "application/json"
-            },
-            "body": json.dumps({
+
+        return None, api_response(
+            401,
+            {
                 "status": "error",
                 "message": "Invalid authorization header"
-            })
-        }
+            }
+        )
 
-    token = authorization_header.split(" ", 1)[1].strip()
+    token = authorization_header.split(
+        " ", 1
+    )[1].strip()
 
     if not token:
-        return None, {
-            "statusCode": 401,
-            "headers": {
-                "Content-Type": "application/json"
-            },
-            "body": json.dumps({
+
+        return None, api_response(
+            401,
+            {
                 "status": "error",
                 "message": "Authorization token required"
-            })
-        }
+            }
+        )
 
     try:
+
         secret_response = ssm.get_parameter(
             Name=JWT_SECRET_PARAMETER,
             WithDecryption=True
@@ -374,53 +739,54 @@ def get_authenticated_user(event):
         return decoded_token, None
 
     except jwt.ExpiredSignatureError:
-        return None, {
-            "statusCode": 401,
-            "headers": {
-                "Content-Type": "application/json"
-            },
-            "body": json.dumps({
+
+        return None, api_response(
+            401,
+            {
                 "status": "error",
                 "message": "Token expired"
-            })
-        }
+            }
+        )
 
     except jwt.InvalidTokenError:
-        return None, {
-            "statusCode": 401,
-            "headers": {
-                "Content-Type": "application/json"
-            },
-            "body": json.dumps({
+
+        return None, api_response(
+            401,
+            {
                 "status": "error",
                 "message": "Invalid token"
-            })
-        }
+            }
+        )
 
     except Exception as error:
-        print(f"Failed to validate JWT: {error}")
 
-        return None, {
-            "statusCode": 500,
-            "headers": {
-                "Content-Type": "application/json"
-            },
-            "body": json.dumps({
+        print(
+            f"Failed to validate JWT: {error}"
+        )
+
+        return None, api_response(
+            500,
+            {
                 "status": "error",
                 "message": "Authentication service error"
-            })
-        }
+            }
+        )
 
+
+# =========================================================
+# MAIN AWS LAMBDA HANDLER
+# =========================================================
 
 def lambda_handler(event, context):
 
     route_key = event.get("routeKey")
 
-    # -------------------------------------------------
+    # -----------------------------------------------------
     # Retrieve database configuration
-    # -------------------------------------------------
+    # -----------------------------------------------------
 
     try:
+
         response = ssm.get_parameters(
             Names=DB_PARAMETER_NAMES,
             WithDecryption=True
@@ -430,11 +796,6 @@ def lambda_handler(event, context):
             parameter["Name"]: parameter["Value"]
             for parameter in response["Parameters"]
         }
-
-        print(
-            f"Database parameters retrieved: "
-            f"{len(parameters)}"
-        )
 
         db_host = parameters[
             "/innovatech/soar/db/host"
@@ -459,28 +820,23 @@ def lambda_handler(event, context):
         ]
 
     except Exception as error:
+
         print(
-            f"Failed to retrieve database parameters: "
-            f"{error}"
+            f"Database configuration error: {error}"
         )
 
-        return {
-            "statusCode": 500,
-            "headers": {
-                "Content-Type": "application/json"
-            },
-            "body": json.dumps({
+        return api_response(
+            500,
+            {
                 "status": "error",
-                "message": (
-                    "Failed to retrieve "
-                    "database configuration"
-                )
-            })
-        }
+                "message": "Failed to retrieve database configuration"
+            }
+        )
 
     connection = None
 
     try:
+
         # -------------------------------------------------
         # Connect to RDS
         # -------------------------------------------------
@@ -491,17 +847,18 @@ def lambda_handler(event, context):
             user=db_user,
             password=db_password,
             database=db_name,
-            connect_timeout=5
+            connect_timeout=5,
+            autocommit=False
         )
 
-        # -------------------------------------------------
+        # =================================================
         # POST /login
-        # Public route
-        # -------------------------------------------------
+        # =================================================
 
         if route_key == "POST /login":
 
             try:
+
                 login_body = json.loads(
                     event["body"]
                 )
@@ -511,37 +868,37 @@ def lambda_handler(event, context):
                 TypeError,
                 json.JSONDecodeError
             ):
-                return {
-                    "statusCode": 400,
-                    "headers": {
-                        "Content-Type":
-                            "application/json"
-                    },
-                    "body": json.dumps({
+
+                return api_response(
+                    400,
+                    {
                         "status": "error",
-                        "message":
-                            "Invalid login request"
-                    })
-                }
+                        "message": "Invalid login request"
+                    }
+                )
+
+            if not isinstance(login_body, dict):
+
+                return api_response(
+                    400,
+                    {
+                        "status": "error",
+                        "message": "Invalid login request"
+                    }
+                )
 
             email = login_body.get("email")
             password = login_body.get("password")
 
             if not email or not password:
-                return {
-                    "statusCode": 400,
-                    "headers": {
-                        "Content-Type":
-                            "application/json"
-                    },
-                    "body": json.dumps({
+
+                return api_response(
+                    400,
+                    {
                         "status": "error",
-                        "message": (
-                            "Email and password "
-                            "are required"
-                        )
-                    })
-                }
+                        "message": "Email and password are required"
+                    }
+                )
 
             user = get_user_by_email(
                 connection,
@@ -555,30 +912,23 @@ def lambda_handler(event, context):
                     user["password_hash"]
                 )
             ):
-                return {
-                    "statusCode": 401,
-                    "headers": {
-                        "Content-Type":
-                            "application/json"
-                    },
-                    "body": json.dumps({
+
+                return api_response(
+                    401,
+                    {
                         "status": "error",
-                        "message": (
-                            "Invalid email or password"
-                        )
-                    })
-                }
+                        "message": "Invalid email or password"
+                    }
+                )
 
             secret_response = ssm.get_parameter(
                 Name=JWT_SECRET_PARAMETER,
                 WithDecryption=True
             )
 
-            jwt_secret = (
-                secret_response[
-                    "Parameter"
-                ]["Value"]
-            )
+            jwt_secret = secret_response[
+                "Parameter"
+            ]["Value"]
 
             token = create_jwt(
                 user,
@@ -590,33 +940,25 @@ def lambda_handler(event, context):
                 f"{user['user_id']}"
             )
 
-            return {
-                "statusCode": 200,
-                "headers": {
-                    "Content-Type":
-                        "application/json"
-                },
-                "body": json.dumps({
+            return api_response(
+                200,
+                {
                     "status": "success",
                     "token": token,
                     "user": {
-                        "user_id":
-                            user["user_id"],
-                        "email":
-                            user["email"],
-                        "role":
-                            user["role"],
-                        "employee_identifier":
-                            user[
-                                "employee_identifier"
-                            ]
+                        "user_id": user["user_id"],
+                        "email": user["email"],
+                        "role": user["role"],
+                        "employee_identifier": (
+                            user["employee_identifier"]
+                        )
                     }
-                })
-            }
+                }
+            )
 
-        # -------------------------------------------------
-        # JWT protection
-        # -------------------------------------------------
+        # =================================================
+        # JWT PROTECTION
+        # =================================================
 
         protected_routes = [
             "GET /events",
@@ -627,6 +969,7 @@ def lambda_handler(event, context):
         authenticated_user = None
 
         if route_key in protected_routes:
+
             authenticated_user, auth_error = (
                 get_authenticated_user(event)
             )
@@ -636,28 +979,24 @@ def lambda_handler(event, context):
 
             print(
                 f"Authenticated request from "
-                f"user ID: "
-                f"{authenticated_user['sub']} "
-                f"with role: "
-                f"{authenticated_user['role']}"
+                f"user ID: {authenticated_user['sub']} "
+                f"with role: {authenticated_user['role']}"
             )
 
-        # -------------------------------------------------
+        # =================================================
         # GET /events
-        # Admin: all events
-        # Employee: own workstation only
-        # -------------------------------------------------
+        # =================================================
 
         if route_key == "GET /events":
 
             role = authenticated_user.get("role")
 
             if role == "admin":
-                events = get_events(
-                    connection
-                )
+
+                events = get_events(connection)
 
             elif role == "employee":
+
                 employee_identifier = (
                     authenticated_user.get(
                         "employee_identifier"
@@ -665,20 +1004,14 @@ def lambda_handler(event, context):
                 )
 
                 if not employee_identifier:
-                    return {
-                        "statusCode": 403,
-                        "headers": {
-                            "Content-Type":
-                                "application/json"
-                        },
-                        "body": json.dumps({
+
+                    return api_response(
+                        403,
+                        {
                             "status": "error",
-                            "message": (
-                                "Employee identifier "
-                                "not assigned"
-                            )
-                        })
-                    }
+                            "message": "Employee identifier not assigned"
+                        }
+                    )
 
                 events = get_employee_events(
                     connection,
@@ -686,56 +1019,39 @@ def lambda_handler(event, context):
                 )
 
             else:
-                return {
-                    "statusCode": 403,
-                    "headers": {
-                        "Content-Type":
-                            "application/json"
-                    },
-                    "body": json.dumps({
+
+                return api_response(
+                    403,
+                    {
                         "status": "error",
                         "message": "Access denied"
-                    })
-                }
+                    }
+                )
 
             events = serialize_rows(events)
 
-            return {
-                "statusCode": 200,
-                "headers": {
-                    "Content-Type":
-                        "application/json"
-                },
-                "body": json.dumps({
+            return api_response(
+                200,
+                {
                     "events": events
-                })
-            }
+                }
+            )
 
-        # -------------------------------------------------
+        # =================================================
         # GET /incidents
-        # Admin only
-        # -------------------------------------------------
+        # =================================================
 
         if route_key == "GET /incidents":
 
-            if (
-                authenticated_user.get("role")
-                != "admin"
-            ):
-                return {
-                    "statusCode": 403,
-                    "headers": {
-                        "Content-Type":
-                            "application/json"
-                    },
-                    "body": json.dumps({
+            if authenticated_user.get("role") != "admin":
+
+                return api_response(
+                    403,
+                    {
                         "status": "error",
-                        "message": (
-                            "Administrator "
-                            "access required"
-                        )
-                    })
-                }
+                        "message": "Administrator access required"
+                    }
+                )
 
             incidents = get_incidents(
                 connection
@@ -745,35 +1061,29 @@ def lambda_handler(event, context):
                 incidents
             )
 
-            return {
-                "statusCode": 200,
-                "headers": {
-                    "Content-Type":
-                        "application/json"
-                },
-                "body": json.dumps({
+            return api_response(
+                200,
+                {
                     "incidents": incidents
-                })
-            }
+                }
+            )
 
-        # -------------------------------------------------
+        # =================================================
         # GET /notifications
-        # Admin: all notifications
-        # Employee: own workstation only
-        # -------------------------------------------------
+        # =================================================
 
         if route_key == "GET /notifications":
 
             role = authenticated_user.get("role")
 
             if role == "admin":
-                notifications = (
-                    get_notifications(
-                        connection
-                    )
+
+                notifications = get_notifications(
+                    connection
                 )
 
             elif role == "employee":
+
                 employee_identifier = (
                     authenticated_user.get(
                         "employee_identifier"
@@ -781,65 +1091,49 @@ def lambda_handler(event, context):
                 )
 
                 if not employee_identifier:
-                    return {
-                        "statusCode": 403,
-                        "headers": {
-                            "Content-Type":
-                                "application/json"
-                        },
-                        "body": json.dumps({
-                            "status": "error",
-                            "message": (
-                                "Employee identifier "
-                                "not assigned"
-                            )
-                        })
-                    }
 
-                notifications = (
-                    get_employee_notifications(
-                        connection,
-                        employee_identifier
+                    return api_response(
+                        403,
+                        {
+                            "status": "error",
+                            "message": "Employee identifier not assigned"
+                        }
                     )
+
+                notifications = get_employee_notifications(
+                    connection,
+                    employee_identifier
                 )
 
             else:
-                return {
-                    "statusCode": 403,
-                    "headers": {
-                        "Content-Type":
-                            "application/json"
-                    },
-                    "body": json.dumps({
+
+                return api_response(
+                    403,
+                    {
                         "status": "error",
                         "message": "Access denied"
-                    })
-                }
+                    }
+                )
 
             notifications = serialize_rows(
                 notifications
             )
 
-            return {
-                "statusCode": 200,
-                "headers": {
-                    "Content-Type":
-                        "application/json"
-                },
-                "body": json.dumps({
-                    "notifications":
-                        notifications
-                })
-            }
+            return api_response(
+                200,
+                {
+                    "notifications": notifications
+                }
+            )
 
-        # -------------------------------------------------
+        # =================================================
         # POST /events
-        # Public ingestion route for now
-        # -------------------------------------------------
+        # =================================================
 
         if route_key == "POST /events":
 
             try:
+
                 body = json.loads(
                     event["body"]
                 )
@@ -849,20 +1143,28 @@ def lambda_handler(event, context):
                 TypeError,
                 json.JSONDecodeError
             ):
-                return {
-                    "statusCode": 400,
-                    "headers": {
-                        "Content-Type":
-                            "application/json"
-                    },
-                    "body": json.dumps({
+
+                return api_response(
+                    400,
+                    {
                         "status": "error",
-                        "message": (
-                            "Invalid JSON "
-                            "request body"
-                        )
-                    })
-                }
+                        "message": "Invalid JSON request body"
+                    }
+                )
+
+            if not isinstance(body, dict):
+
+                return api_response(
+                    400,
+                    {
+                        "status": "error",
+                        "message": "JSON body must be an object"
+                    }
+                )
+
+            # ---------------------------------------------
+            # Validate required event fields
+            # ---------------------------------------------
 
             missing_fields = [
                 field
@@ -871,202 +1173,110 @@ def lambda_handler(event, context):
             ]
 
             if missing_fields:
-                return {
-                    "statusCode": 400,
-                    "headers": {
-                        "Content-Type":
-                            "application/json"
-                    },
-                    "body": json.dumps({
+
+                return api_response(
+                    400,
+                    {
                         "status": "error",
-                        "message": (
-                            "Missing required fields"
-                        ),
-                        "missing_fields":
-                            missing_fields
-                    })
-                }
-
-            incident_id = None
-            notification_id = None
-
-            # Store security event
-            with connection.cursor() as cursor:
-                sql = """
-                    INSERT INTO security_events
-                    (
-                        event_type,
-                        source,
-                        source_ip,
-                        severity,
-                        event_timestamp,
-                        message
-                    )
-                    VALUES (
-                        %s,
-                        %s,
-                        %s,
-                        %s,
-                        %s,
-                        %s
-                    )
-                """
-
-                cursor.execute(
-                    sql,
-                    (
-                        body["event_type"],
-                        body["source"],
-                        body["source_ip"],
-                        body["severity"],
-                        body["timestamp"]
-                        .replace("T", " ")
-                        .replace("Z", ""),
-                        body["message"]
-                    )
+                        "message": "Missing required fields",
+                        "missing_fields": missing_fields
+                    }
                 )
 
-                event_id = (
-                    cursor.lastrowid
-                )
+            # Validate field values
 
-            connection.commit()
+            for field in REQUIRED_FIELDS:
 
-            print(
-                f"Security event stored "
-                f"successfully. "
-                f"Event ID: {event_id}"
+                if (
+                    not isinstance(body[field], str)
+                    or not body[field].strip()
+                ):
+
+                    return api_response(
+                        400,
+                        {
+                            "status": "error",
+                            "message": (
+                                f"Invalid value for field: {field}"
+                            )
+                        }
+                    )
+
+            # Normalize severity for rule evaluation
+
+            body["severity"] = (
+                body["severity"].strip().lower()
             )
 
-            # -------------------------------------------------
-            # Evaluate SOAR rules
-            # -------------------------------------------------
+            # Validate timestamp before processing
 
-            rule_result = evaluate_rules(
+            try:
+
+                datetime.fromisoformat(
+                    body["timestamp"].replace(
+                        "Z",
+                        "+00:00"
+                    )
+                )
+
+            except ValueError:
+
+                return api_response(
+                    400,
+                    {
+                        "status": "error",
+                        "message": "Invalid event timestamp"
+                    }
+                )
+
+            # ---------------------------------------------
+            # Centralized SOAR processing
+            # ---------------------------------------------
+
+            result = process_security_event(
+                connection,
                 body
             )
 
-            if rule_result["matched"]:
-
-                print(
-                    f"Rule matched: "
-                    f"{rule_result['rule_name']} "
-                    f"for event ID: "
-                    f"{event_id}"
-                )
-
-                # Automated response 1:
-                # Create incident
-                incident_id = (
-                    create_incident(
-                        connection,
-                        event_id,
-                        body,
-                        rule_result[
-                            "rule_name"
-                        ]
-                    )
-                )
-
-                # Automated response 2:
-                # Create notification
-                notification_id = (
-                    create_notification(
-                        connection,
-                        event_id,
-                        incident_id,
-                        body,
-                        rule_result[
-                            "rule_name"
-                        ]
-                    )
-                )
-
-                connection.commit()
-
-                print(
-                    f"Automated responses "
-                    f"executed: "
-                    f"Incident {incident_id} "
-                    f"created, "
-                    f"Notification "
-                    f"{notification_id} created"
-                )
-
-            else:
-                print(
-                    f"No rule matched for "
-                    f"event ID: {event_id}"
-                )
-
-            print(
-                "Validated security event:"
+            return api_response(
+                200,
+                result
             )
 
-            print(
-                json.dumps(body)
-            )
+        # =================================================
+        # UNKNOWN ROUTE
+        # =================================================
 
-            return {
-                "statusCode": 200,
-                "headers": {
-                    "Content-Type":
-                        "application/json"
-                },
-                "body": json.dumps({
-                    "status": "processed",
-                    "message": (
-                        "Security event "
-                        "processed successfully"
-                    ),
-                    "event_id":
-                        event_id,
-                    "rule_matched":
-                        rule_result["matched"],
-                    "rule_name":
-                        rule_result["rule_name"],
-                    "incident_id":
-                        incident_id,
-                    "notification_id":
-                        notification_id
-                })
-            }
-
-        # -------------------------------------------------
-        # Unknown route
-        # -------------------------------------------------
-
-        return {
-            "statusCode": 404,
-            "headers": {
-                "Content-Type":
-                    "application/json"
-            },
-            "body": json.dumps({
+        return api_response(
+            404,
+            {
                 "status": "error",
                 "message": "Route not found"
-            })
-        }
-
-    except Exception as error:
-        print(
-            f"Failed to process request: "
-            f"{error}"
+            }
         )
 
-        return {
-            "statusCode": 500,
-            "headers": {
-                "Content-Type":
-                    "application/json"
-            },
-            "body": json.dumps({
+    except Exception as error:
+
+        print(
+            f"Failed to process request: {error}"
+        )
+
+        if connection:
+
+            try:
+                connection.rollback()
+            except Exception:
+                pass
+
+        return api_response(
+            500,
+            {
                 "status": "error",
-                "message":
-                    "Failed to process request"
-            })
-        }
+                "message": "Failed to process request"
+            }
+        )
 
     finally:
+
         if connection:
             connection.close()
