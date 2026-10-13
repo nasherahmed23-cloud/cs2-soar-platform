@@ -53,6 +53,12 @@ DETECTION_RULES = [
         "event_type": "failed_login",
         "severity": "high",
         "title": "Suspicious Failed Login"
+    },
+    {
+        "name" : "unauthorized_access",
+        "event_type" : "access_denied",
+        "severity" : "high",
+        "title" : "Unauthorized Access Detected"
     }
 ]
 
