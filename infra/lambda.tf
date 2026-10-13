@@ -18,8 +18,8 @@ resource "aws_lambda_function" "event_collector" {
   memory_size = 128
   vpc_config {
     subnet_ids = [
-      "subnet-0ef41a91a63101ba7",
-      "subnet-09464db9a5f9d05c8"
+      "subnet-0ef41a91a63101ba7", # innovatech-nca-private-app-1a 
+      "subnet-09464db9a5f9d05c8" # innovatech-nca-private-app-1b 
     ]
     security_group_ids = [
       aws_security_group.soar_lambda_sg.id
