@@ -4,22 +4,18 @@ data "archive_file" "event_collector" {
   output_path = "${path.module}/event_collector.zip"
 }
 resource "aws_lambda_function" "event_collector" {
-  function_name = "innovatech-soar-event-collector"
-
+  function_name    = "innovatech-soar-event-collector"
   filename         = data.archive_file.event_collector.output_path
   source_code_hash = data.archive_file.event_collector.output_base64sha256
-
-  runtime = "python3.12"
-  handler = "event_collector.lambda_handler"
-
-  role = aws_iam_role.lambda_execution_role.arn
-
-  timeout     = 10
-  memory_size = 128
+  runtime          = "python3.12"
+  handler          = "event_collector.lambda_handler"
+  role             = aws_iam_role.lambda_execution_role.arn
+  timeout          = 10
+  memory_size      = 128
   vpc_config {
     subnet_ids = [
       "subnet-0ef41a91a63101ba7", # innovatech-nca-private-app-1a 
-      "subnet-09464db9a5f9d05c8" # innovatech-nca-private-app-1b 
+      "subnet-09464db9a5f9d05c8"  # innovatech-nca-private-app-1b 
     ]
     security_group_ids = [
       aws_security_group.soar_lambda_sg.id
